@@ -67,11 +67,18 @@ async function fetchCloneTargetOptions() {
 
   try {
     const res = await api.getTourDetail(prediction.value.tourId);
+    const tourName = res.data.name.trim();
     const options = res.data.concerts.flatMap((concert) =>
-      concert.performances.map((performance) => ({
-        label: `${concert.name} ${performance.name}`,
-        value: performance.id,
-      })));
+      concert.performances.map((performance) => {
+        const concertName = concert.name.trim();
+        const performanceName = performance.name.trim();
+        const label = [concertName, performanceName].filter(Boolean).join(' ') || tourName;
+
+        return {
+          label,
+          value: performance.id,
+        };
+      }));
 
     cloneTargetOptions.value = [
       ...options,
