@@ -6,6 +6,7 @@ import { darkTheme } from 'naive-ui';
 import { computed, ref, watchEffect } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
+import GlobalErrorRefreshDialog from './components/common/GlobalErrorRefreshDialog.vue';
 import LanguageSwitcher from './components/common/LanguageSwitcher.vue';
 import { useNetworkStatus } from './composables/useNetworkStatus';
 import { SITE_DESCRIPTION, SITE_URL } from './constants/site';
@@ -77,77 +78,80 @@ useHead(computed(() => ({
 
 <template>
   <n-config-provider :theme="naiveTheme">
-    <n-message-provider>
-      <n-layout class="app-layout">
-        <n-layout-header
-          class="app-header"
-          bordered
-        >
-          <div class="app-header-inner">
-            <router-link
-              to="/"
-              class="brand"
-            >
-              {{ t('app.name') }}
-            </router-link>
-            <n-space align="center">
+    <n-dialog-provider>
+      <n-message-provider>
+        <global-error-refresh-dialog />
+        <n-layout class="app-layout">
+          <n-layout-header
+            class="app-header"
+            bordered
+          >
+            <div class="app-header-inner">
               <router-link
-                v-for="item of navItems"
-                :key="item.to"
-                :to="item.to"
-                class="nav-link"
+                to="/"
+                class="brand"
               >
-                {{ item.name }}
+                {{ t('app.name') }}
               </router-link>
-              <n-button
-                quaternary
-                circle
-                :title="t('common.settings')"
-                @click="showSettingsModal = true"
+              <n-space align="center">
+                <router-link
+                  v-for="item of navItems"
+                  :key="item.to"
+                  :to="item.to"
+                  class="nav-link"
+                >
+                  {{ item.name }}
+                </router-link>
+                <n-button
+                  quaternary
+                  circle
+                  :title="t('common.settings')"
+                  @click="showSettingsModal = true"
+                >
+                  <n-icon>
+                    <settings-outline />
+                  </n-icon>
+                </n-button>
+              </n-space>
+            </div>
+          </n-layout-header>
+          <n-layout-content content-style="padding: 20px;">
+            <div class="page-shell">
+              <n-alert
+                v-if="!isOnline"
+                type="warning"
+                :title="t('app.offlineTitle')"
+                style="margin-bottom: 12px"
               >
-                <n-icon>
-                  <settings-outline />
-                </n-icon>
-              </n-button>
+                {{ t('app.offlineMessage') }}
+              </n-alert>
+              <h1 class="page-title">
+                {{ pageTitle }}
+              </h1>
+              <router-view />
+            </div>
+          </n-layout-content>
+        </n-layout>
+        <n-modal v-model:show="showSettingsModal">
+          <n-card
+            :title="t('common.settings')"
+            style="width: 360px"
+            :bordered="false"
+            role="dialog"
+            aria-modal="true"
+          >
+            <n-space vertical>
+              <div>{{ t('common.language') }}</div>
+              <language-switcher />
+              <div>{{ t('common.themeMode') }}</div>
+              <n-select
+                v-model:value="themeMode"
+                :options="themeModeOptions"
+              />
             </n-space>
-          </div>
-        </n-layout-header>
-        <n-layout-content content-style="padding: 20px;">
-          <div class="page-shell">
-            <n-alert
-              v-if="!isOnline"
-              type="warning"
-              :title="t('app.offlineTitle')"
-              style="margin-bottom: 12px"
-            >
-              {{ t('app.offlineMessage') }}
-            </n-alert>
-            <h1 class="page-title">
-              {{ pageTitle }}
-            </h1>
-            <router-view />
-          </div>
-        </n-layout-content>
-      </n-layout>
-      <n-modal v-model:show="showSettingsModal">
-        <n-card
-          :title="t('common.settings')"
-          style="width: 360px"
-          :bordered="false"
-          role="dialog"
-          aria-modal="true"
-        >
-          <n-space vertical>
-            <div>{{ t('common.language') }}</div>
-            <language-switcher />
-            <div>{{ t('common.themeMode') }}</div>
-            <n-select
-              v-model:value="themeMode"
-              :options="themeModeOptions"
-            />
-          </n-space>
-        </n-card>
-      </n-modal>
-    </n-message-provider>
+          </n-card>
+        </n-modal>
+      </n-message-provider>
+    </n-dialog-provider>
   </n-config-provider>
 </template>

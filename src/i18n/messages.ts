@@ -27,6 +27,11 @@ export const messages = {
       themeSystem: 'Follow system',
       note: 'Note',
       gotIt: 'Got it',
+      updateDialogTitle: 'Something went wrong',
+      updateDialogMessage:
+        'This page encountered an unexpected error. Refreshing may help. Refresh now?',
+      updateDialogDetails: 'Show error details',
+      updateDialogRefresh: 'Refresh',
     },
     errors: {
       INVALID_JSON: 'Request data is invalid. Please refresh and try again.',
@@ -204,6 +209,10 @@ export const messages = {
       themeSystem: '跟随系统',
       note: '备注',
       gotIt: '知道了',
+      updateDialogTitle: '页面出现错误',
+      updateDialogMessage: '当前页面遇到了一个意外错误，刷新后可能恢复正常。是否立即刷新？',
+      updateDialogDetails: '展开错误详情',
+      updateDialogRefresh: '刷新页面',
     },
     errors: {
       INVALID_JSON: '请求数据无效，请刷新后重试。',
@@ -380,6 +389,10 @@ export const messages = {
       themeSystem: 'システムに合わせる',
       note: 'メモ',
       gotIt: '了解',
+      updateDialogTitle: 'エラーが発生しました',
+      updateDialogMessage: 'このページで予期しないエラーが発生しました。再読み込みで解消する可能性があります。今すぐ再読み込みしますか？',
+      updateDialogDetails: 'エラー詳細を表示',
+      updateDialogRefresh: '再読み込み',
     },
     errors: {
       INVALID_JSON: 'リクエストデータが不正です。再読み込みして再試行してください。',
