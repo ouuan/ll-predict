@@ -77,7 +77,7 @@ function toSongTokensFromSetlist(setlists: SetlistItem[]): SongToken[] {
     .filter((item) => item.contentType === 'song' && item.song)
     .map((item) => ({
       id: String(item.song?.id),
-      name: item.song?.name?.trim() || String(item.song?.id),
+      name: item.song?.name.trim() || String(item.song?.id),
     }));
 }
 
@@ -88,8 +88,9 @@ function buildEditDistanceTable(a: SongToken[], b: SongToken[]): number[][] {
   );
 
   for (let i = 0; i <= a.length; i += 1) {
-    if (dp[i]) {
-      dp[i][0] = i;
+    const row = dp[i];
+    if (row) {
+      row[0] = i;
     }
   }
   for (let j = 0; j <= b.length; j += 1) {
@@ -104,8 +105,9 @@ function buildEditDistanceTable(a: SongToken[], b: SongToken[]): number[][] {
       const deleteCost = (dp[i - 1]?.[j] ?? 0) + 1;
       const insertCost = (dp[i]?.[j - 1] ?? 0) + 1;
       const replaceCost = (dp[i - 1]?.[j - 1] ?? 0) + cost;
-      if (dp[i]) {
-        dp[i][j] = Math.min(deleteCost, insertCost, replaceCost);
+      const row = dp[i];
+      if (row) {
+        row[j] = Math.min(deleteCost, insertCost, replaceCost);
       }
     }
   }
