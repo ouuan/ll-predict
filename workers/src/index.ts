@@ -1614,6 +1614,9 @@ app.get('/api/predictions/:id', async (c) => {
     return jsonError('PREDICTION_NOT_FOUND', `Prediction ${id} does not exist.`, 404);
   }
 
+  // Preload tour to populate tourCache for buildPerformanceTitle
+  await getTourById(prediction.tourId);
+
   return c.json({
     data: toPredictionResponse(prediction, sessionId),
   });
@@ -1797,6 +1800,11 @@ app.get('/api/predictions', async (c) => {
   }
 
   const paged = paginate(list, page, pageSize);
+
+  // Preload tours to populate tourCache for buildPerformanceTitle
+  const tourIds = [...new Set(paged.items.map((p) => p.tourId))];
+  await Promise.all(tourIds.map((tourId) => getTourById(tourId)));
+
   return c.json({
     data: {
       items: paged.items.map((prediction) => toPredictionResponse(prediction, sessionId)),
