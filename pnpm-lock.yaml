@@ -21,8 +21,8 @@ importers:
         specifier: 4.1.0
         version: 4.1.0
       hono:
-        specifier: 4.12.9
-        version: 4.12.9
+        specifier: 4.12.10
+        version: 4.12.10
       naive-ui:
         specifier: 2.44.1
         version: 2.44.1(vue@3.5.31(typescript@5.9.3))
@@ -1484,8 +1484,8 @@ packages:
     resolution: {integrity: sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w==}
     engines: {node: '>=12.0.0'}
 
-  hono@4.12.9:
-    resolution: {integrity: sha512-wy3T8Zm2bsEvxKZM5w21VdHDDcwVS1yUFFY6i8UobSsKfFceT7TOwhbhfKsDyx7tYQlmRM5FLpIuYvNFyjctiA==}
+  hono@4.12.10:
+    resolution: {integrity: sha512-mx/p18PLy5og9ufies2GOSUqep98Td9q4i/EF6X7yJgAiIopxqdfIO3jbqsi3jRgTgw88jMDEzVKi+V2EF+27w==}
     engines: {node: '>=16.9.0'}
 
   hookable@5.5.3:
@@ -3861,7 +3861,7 @@ snapshots:
 
   highlight.js@11.11.1: {}
 
-  hono@4.12.9: {}
+  hono@4.12.10: {}
 
   hookable@5.5.3: {}
 
