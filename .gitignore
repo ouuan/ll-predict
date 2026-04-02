@@ -3,3 +3,4 @@ node_modules/
 vibe/
 .wrangler/
 .vscode/
+public/HEAD

@@ -9,6 +9,10 @@ const dialog = useDialog();
 const router = useRouter();
 
 let hasShownErrorDialog = false;
+let baseHead: string | null = null;
+let isCheckingHead = false;
+
+const HEAD_PATH = '/HEAD';
 
 function stringifyError(value: unknown): string {
   if (value instanceof Error) {
@@ -66,9 +70,57 @@ function showRefreshDialog(error: unknown): void {
   });
 }
 
+async function fetchHead(): Promise<string | null> {
+  try {
+    const response = await fetch(HEAD_PATH, {
+      cache: 'no-store',
+      headers: {
+        'cache-control': 'no-cache',
+      },
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const text = (await response.text()).trim();
+    return text.length > 0 ? text : null;
+  } catch {
+    return null;
+  }
+}
+
+async function shouldShowUpdateDialog(): Promise<boolean> {
+  if (isCheckingHead) {
+    return false;
+  }
+  isCheckingHead = true;
+  try {
+    const latestHead = await fetchHead();
+    if (!latestHead) {
+      return false;
+    }
+    if (!baseHead) {
+      baseHead = latestHead;
+      return false;
+    }
+    return latestHead !== baseHead;
+  } finally {
+    isCheckingHead = false;
+  }
+}
+
+async function tryShowRefreshDialog(error: unknown): Promise<void> {
+  if (await shouldShowUpdateDialog()) {
+    showRefreshDialog(error);
+  }
+}
+
+async function initBaseHead(): Promise<void> {
+  baseHead = await fetchHead();
+}
+
 function handleWindowError(event: Event): void {
   if (event instanceof ErrorEvent) {
-    showRefreshDialog(event.error ?? event.message ?? 'Unknown runtime error');
+    void tryShowRefreshDialog(event.error ?? event.message ?? 'Unknown runtime error');
     return;
   }
 
@@ -78,17 +130,16 @@ function handleWindowError(event: Event): void {
     && target.type === 'module'
     && target.src.length > 0
   ) {
-    showRefreshDialog(`Module script failed to load: ${target.src}`);
+    void tryShowRefreshDialog(`Module script failed to load: ${target.src}`);
   }
 }
 
 function handleUnhandledRejection(event: PromiseRejectionEvent): void {
-  event.preventDefault();
-  showRefreshDialog(event.reason ?? 'Unhandled promise rejection');
+  void tryShowRefreshDialog(event.reason ?? 'Unhandled promise rejection');
 }
 
 function handleRouterError(error: Error): void {
-  showRefreshDialog(error);
+  void tryShowRefreshDialog(error);
 }
 
 // Vue Router error handling is callback-based by API design.
@@ -96,6 +147,7 @@ function handleRouterError(error: Error): void {
 const removeRouterErrorHandler = router.onError(handleRouterError);
 
 onMounted(() => {
+  void initBaseHead();
   window.addEventListener('error', handleWindowError, true);
   window.addEventListener('unhandledrejection', handleUnhandledRejection);
 });
