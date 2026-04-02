@@ -30,6 +30,7 @@ function showRefreshDialog(error: unknown): void {
   }
   hasShownErrorDialog = true;
 
+  // eslint-disable-next-line no-console
   console.error(error);
   const details = stringifyError(error);
   dialog.warning({
@@ -43,7 +44,13 @@ function showRefreshDialog(error: unknown): void {
       h('details', { style: 'font-size: 12px;' }, [
         h('summary', { style: 'cursor: pointer;' }, t('common.updateDialogDetails')),
         h('pre', {
-          style: 'margin-top: 8px; max-height: 200px; overflow: auto; white-space: pre-wrap; word-break: break-all;',
+          style: {
+            marginTop: '8px',
+            maxHeight: '200px',
+            overflow: 'auto',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-all',
+          },
         }, details),
       ]),
     ]),
@@ -80,9 +87,13 @@ function handleUnhandledRejection(event: PromiseRejectionEvent): void {
   showRefreshDialog(event.reason ?? 'Unhandled promise rejection');
 }
 
-const removeRouterErrorHandler = router.onError((error) => {
+function handleRouterError(error: Error): void {
   showRefreshDialog(error);
-});
+}
+
+// Vue Router error handling is callback-based by API design.
+
+const removeRouterErrorHandler = router.onError(handleRouterError);
 
 onMounted(() => {
   window.addEventListener('error', handleWindowError, true);
@@ -96,4 +107,6 @@ onBeforeUnmount(() => {
 });
 </script>
 
-<template />
+<template>
+  <span style="display: none;" />
+</template>
