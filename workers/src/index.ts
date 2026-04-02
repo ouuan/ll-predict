@@ -932,6 +932,31 @@ async function countPredictionsByTourId(
   }
 }
 
+async function countPredictionsByTourIds(
+  db: D1LikeDatabase,
+  tourIds: string[],
+): Promise<Record<string, number>> {
+  if (tourIds.length === 0) {
+    return {};
+  }
+
+  try {
+    const placeholders = tourIds.map(() => '?').join(',');
+    const rows = await db.prepare(
+      'SELECT tour_id, COUNT(*) AS count FROM predictions'
+      + ` WHERE tour_id IN (${placeholders}) GROUP BY tour_id`,
+    ).bind(...tourIds).all<{ tour_id: string; count: number | string }>();
+
+    const result: Record<string, number> = {};
+    for (const row of rows.results) {
+      result[row.tour_id] = Number(row.count);
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
 async function countPredictionsByPerformanceIds(
   db: D1LikeDatabase,
   performanceIds: string[],
@@ -1292,28 +1317,14 @@ app.post('/api/ll-fans/tours', async (c) => {
   try {
     const summaries = await fetchTourSummariesFromLlFans({ seriesIds });
     const paged = paginate(summaries.items, page, pageSize);
-    const enriched = await Promise.all(
-      paged.items.map(async (tour) => {
-        const fullTour = await fetchTourByIdFromLlFans(tour.id) ?? tour;
-        const predictionsCount = await countPredictionsByTourId(db, fullTour.id);
-        fullTour.predictionsCount = predictionsCount;
-
-        // Add predictions count for each performance
-        const performanceIds = fullTour.concerts.flatMap((c) =>
-          c.performances.map((p) => p.id));
-        const performancePredictionsCount = await countPredictionsByPerformanceIds(
-          db,
-          performanceIds,
-        );
-        for (const concert of fullTour.concerts) {
-          for (const performance of concert.performances) {
-            performance.predictionsCount = performancePredictionsCount[performance.id] ?? 0;
-          }
-        }
-
-        return fullTour;
-      }),
+    const predictionsCountByTourId = await countPredictionsByTourIds(
+      db,
+      paged.items.map((tour) => tour.id),
     );
+    const enriched = paged.items.map((tour) => ({
+      ...tour,
+      predictionsCount: predictionsCountByTourId[tour.id] ?? 0,
+    }));
 
     return c.json({
       data: {
