@@ -9,7 +9,9 @@ import { RouterLink, RouterView, useRoute } from 'vue-router';
 import GlobalErrorRefreshDialog from './components/common/GlobalErrorRefreshDialog.vue';
 import LanguageSwitcher from './components/common/LanguageSwitcher.vue';
 import { useNetworkStatus } from './composables/useNetworkStatus';
-import { SITE_DESCRIPTION, SITE_URL } from './constants/site';
+import {
+  DATA_SOURCE_URL, REPOSITORY_URL, SITE_DESCRIPTION, SITE_URL,
+} from './constants/site';
 
 const route = useRoute();
 const { isOnline } = useNetworkStatus();
@@ -115,7 +117,10 @@ useHead(computed(() => ({
               </n-space>
             </div>
           </n-layout-header>
-          <n-layout-content content-style="padding: 20px;">
+          <n-layout-content
+            class="app-content"
+            content-style="padding: 20px;"
+          >
             <div class="page-shell">
               <n-alert
                 v-if="!isOnline"
@@ -131,6 +136,39 @@ useHead(computed(() => ({
               <router-view />
             </div>
           </n-layout-content>
+          <n-layout-footer
+            bordered
+            class="app-footer"
+          >
+            <div class="app-footer-inner">
+              <span>
+                {{ t('app.footer.repository') }}:
+                <a
+                  :href="REPOSITORY_URL"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  GitHub
+                </a>
+              </span>
+              <span
+                class="app-footer-separator"
+                aria-hidden="true"
+              >
+                |
+              </span>
+              <span>
+                {{ t('app.footer.dataSource') }}:
+                <a
+                  :href="DATA_SOURCE_URL"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {{ t('app.footer.llFans') }}
+                </a>
+              </span>
+            </div>
+          </n-layout-footer>
         </n-layout>
         <n-modal v-model:show="showSettingsModal">
           <n-card

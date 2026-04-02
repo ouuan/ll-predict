@@ -16,6 +16,11 @@ export const messages = {
       },
       offlineTitle: 'Offline',
       offlineMessage: 'You are offline. New requests may fail until the network is restored.',
+      footer: {
+        repository: 'Code Repository',
+        dataSource: 'Data Source',
+        llFans: 'LL-Fans',
+      },
     },
     common: {
       errorTitle: 'Error',
@@ -65,7 +70,7 @@ export const messages = {
       performances: 'Performances',
       view: 'View',
       viewDetail: 'View Detail',
-      viewOnLlFans: 'View on ll-fans',
+      viewOnLlFans: 'View on LL-Fans',
       predict: 'Predict',
       predictions: 'Predictions',
       viewResults: 'View Results',
@@ -199,6 +204,11 @@ export const messages = {
       },
       offlineTitle: '离线',
       offlineMessage: '当前处于离线状态，新的请求可能会失败。',
+      footer: {
+        repository: '代码仓库',
+        dataSource: '数据来源',
+        llFans: 'LL-Fans',
+      },
     },
     common: {
       errorTitle: '错误',
@@ -247,7 +257,7 @@ export const messages = {
       performances: '场次数',
       view: '查看',
       viewDetail: '查看详情',
-      viewOnLlFans: '在 ll-fans 查看',
+      viewOnLlFans: '在 LL-Fans 查看',
       predict: '预测',
       predictions: '预测列表',
       viewResults: '查看结果',
@@ -380,6 +390,11 @@ export const messages = {
       },
       offlineTitle: 'オフライン',
       offlineMessage: '現在オフラインです。新しいリクエストは失敗する可能性があります。',
+      footer: {
+        repository: 'コードリポジトリ',
+        dataSource: 'データソース',
+        llFans: 'LL-Fans',
+      },
     },
     common: {
       errorTitle: 'エラー',
@@ -428,7 +443,7 @@ export const messages = {
       performances: '公演数',
       view: '表示',
       viewDetail: '詳細を見る',
-      viewOnLlFans: 'll-fansで見る',
+      viewOnLlFans: 'LL-Fansで見る',
       predict: '予想',
       predictions: '予想一覧',
       viewResults: '結果を見る',
