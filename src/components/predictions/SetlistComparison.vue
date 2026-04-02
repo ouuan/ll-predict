@@ -9,7 +9,11 @@ const props = defineProps<{
   actualSetlists: SetlistItem[];
 }>();
 
-const { computeSongAccuracy, computeOrderAccuracy } = useSetlistComparison();
+const {
+  computeSongAccuracy,
+  computeOrderAccuracy,
+  alignSetlistsByEditDistance,
+} = useSetlistComparison();
 const { t } = useI18n();
 
 const songAccuracy = computed(() =>
@@ -18,17 +22,36 @@ const songAccuracy = computed(() =>
 const orderAccuracy = computed(() =>
   computeOrderAccuracy(props.predictionItems, props.actualSetlists));
 
-const predictedSongs = computed(() => {
-  return props.predictionItems
-    .filter((item) => item.type === 'song')
-    .map((item) => item.songName ?? item.songId ?? '');
-});
+const alignedRows = computed(() =>
+  alignSetlistsByEditDistance(props.predictionItems, props.actualSetlists));
 
-const actualSongs = computed(() => {
-  return props.actualSetlists
-    .filter((item) => item.contentType === 'song' && item.song)
-    .map((item) => item.song?.name ?? '');
-});
+const mobilePredictedRows = computed(() =>
+  alignedRows.value
+    .filter((row) => Boolean(row.predicted))
+    .map((row) => ({
+      text: row.predicted ?? '',
+      operation: row.operation,
+    })));
+
+const mobileActualRows = computed(() =>
+  alignedRows.value
+    .filter((row) => Boolean(row.actual))
+    .map((row) => ({
+      text: row.actual ?? '',
+      operation: row.operation,
+    })));
+
+function mobilePredictedClass(operation: 'equal' | 'insert' | 'delete' | 'replace'): string {
+  if (operation === 'delete') return 'comparison-cell--delete';
+  if (operation === 'replace') return 'comparison-cell--replace';
+  return '';
+}
+
+function mobileActualClass(operation: 'equal' | 'insert' | 'delete' | 'replace'): string {
+  if (operation === 'insert') return 'comparison-cell--insert';
+  if (operation === 'replace') return 'comparison-cell--replace';
+  return '';
+}
 </script>
 
 <template>
@@ -49,49 +72,121 @@ const actualSongs = computed(() => {
         </div>
       </n-space>
 
-      <div class="comparison-columns">
-        <n-card
-          size="small"
-          :title="t('ui.predictedSetlist')"
-        >
-          <n-list bordered>
-            <n-list-item
-              v-for="(song, index) of predictedSongs"
-              :key="`pred-${index}`"
-            >
-              {{ index + 1 }}. {{ song }}
-            </n-list-item>
-          </n-list>
-        </n-card>
+      <div class="comparison-grid comparison-grid--desktop">
+        <div class="comparison-head">
+          {{ t('ui.predictedSetlist') }}
+        </div>
+        <div class="comparison-head">
+          {{ t('ui.actualSetlist') }}
+        </div>
 
-        <n-card
-          size="small"
-          :title="t('ui.actualSetlist')"
+        <template
+          v-for="(row, index) of alignedRows"
+          :key="`row-${index}`"
         >
-          <n-list bordered>
-            <n-list-item
-              v-for="(song, index) of actualSongs"
-              :key="`act-${index}`"
-            >
-              {{ index + 1 }}. {{ song }}
-            </n-list-item>
-          </n-list>
-        </n-card>
+          <div
+            class="comparison-cell"
+            :class="row.predicted ? `comparison-cell--${row.operation}` : 'comparison-cell--empty'"
+          >
+            {{ row.predicted ?? '' }}
+          </div>
+          <div
+            class="comparison-cell"
+            :class="row.actual ? `comparison-cell--${row.operation}` : 'comparison-cell--empty'"
+          >
+            {{ row.actual ?? '' }}
+          </div>
+        </template>
+      </div>
+
+      <div class="comparison-mobile">
+        <div class="comparison-head">
+          {{ t('ui.predictedSetlist') }}
+        </div>
+        <div class="comparison-mobile-list">
+          <div
+            v-for="(row, index) of mobilePredictedRows"
+            :key="`mobile-pred-${index}`"
+            class="comparison-cell"
+            :class="mobilePredictedClass(row.operation)"
+          >
+            {{ row.text }}
+          </div>
+        </div>
+
+        <div class="comparison-head">
+          {{ t('ui.actualSetlist') }}
+        </div>
+        <div class="comparison-mobile-list">
+          <div
+            v-for="(row, index) of mobileActualRows"
+            :key="`mobile-actual-${index}`"
+            class="comparison-cell"
+            :class="mobileActualClass(row.operation)"
+          >
+            {{ row.text }}
+          </div>
+        </div>
       </div>
     </n-space>
   </n-card>
 </template>
 
 <style scoped>
-.comparison-columns {
+.comparison-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.comparison-mobile {
+  display: none;
+}
+
+.comparison-mobile-list {
+  display: grid;
+  gap: 8px;
+}
+
+.comparison-head {
+  font-weight: 600;
+  color: var(--n-text-color);
+  padding: 4px 8px;
+}
+
+.comparison-cell {
+  border: 1px solid var(--n-border-color);
+  border-radius: 8px;
+  padding: 8px 10px;
+  line-height: 1.4;
+}
+
+.comparison-cell--empty {
+  border: none;
+  background: transparent;
+}
+
+.comparison-cell--insert {
+  background: rgba(24, 160, 88, 0.12);
+}
+
+.comparison-cell--delete {
+  background: rgba(208, 48, 80, 0.08);
+}
+
+.comparison-cell--replace {
+  background: rgba(240, 160, 32, 0.12);
 }
 
 @media (max-width: 900px) {
-  .comparison-columns {
-    grid-template-columns: minmax(0, 1fr);
+  .comparison-grid--desktop {
+    display: none;
+  }
+
+  .comparison-mobile {
+    display: grid;
+    gap: 8px;
   }
 }
 </style>
