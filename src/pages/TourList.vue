@@ -20,8 +20,29 @@ const total = ref(0);
 const tours = ref<TourListItem[]>([]);
 const errorMessage = ref('');
 const selectedSeriesIds = useStorage<string[]>('tourListSeriesFilter', []);
+const hideClosedWithoutPredictions = useStorage(
+  'tourListHideClosedWithoutPredictions',
+  true,
+);
 
 const seriesOptions = computed(() => getSeriesOptions(locale.value));
+
+function isSubmissionClosed(startsOn: string): boolean {
+  const cutoff = Date.parse(`${startsOn}T00:00:00+09:00`);
+  if (!Number.isFinite(cutoff)) {
+    return false;
+  }
+  return Date.now() >= cutoff;
+}
+
+const filteredTours = computed(() => {
+  if (!hideClosedWithoutPredictions.value) {
+    return tours.value;
+  }
+  return tours.value.filter(
+    (tour) => !(isSubmissionClosed(tour.startsOn) && tour.predictionsCount === 0),
+  );
+});
 
 async function fetchTours() {
   loading.value = true;
@@ -68,23 +89,39 @@ onMounted(() => {
       v-if="errorMessage"
       :message="errorMessage"
     />
-    <n-select
-      v-model:value="selectedSeriesIds"
-      :options="seriesOptions"
-      :placeholder="t('ui.placeholders.selectSeries')"
-      multiple
-      clearable
-      filterable
-      @update:value="onSeriesFilterChange"
-    />
+    <n-card size="small">
+      <n-space
+        size="large"
+        align="center"
+        wrap
+      >
+        <n-select
+          v-model:value="selectedSeriesIds"
+          style="min-width: 260px"
+          :options="seriesOptions"
+          :placeholder="t('ui.placeholders.selectSeries')"
+          multiple
+          clearable
+          filterable
+          @update:value="onSeriesFilterChange"
+        />
+        <n-form-item
+          :label="t('ui.hideClosedWithoutPredictions')"
+          label-placement="left"
+          :show-feedback="false"
+        >
+          <n-switch v-model:value="hideClosedWithoutPredictions" />
+        </n-form-item>
+      </n-space>
+    </n-card>
     <n-card>
       <loading-spinner :show="loading">
         <n-list
-          v-if="tours.length > 0"
+          v-if="filteredTours.length > 0"
           bordered
         >
           <n-list-item
-            v-for="tour of tours"
+            v-for="tour of filteredTours"
             :key="tour.id"
           >
             <div class="tour-item">
