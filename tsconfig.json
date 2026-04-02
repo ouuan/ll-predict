@@ -1,0 +1,11 @@
+{
+    "extends": "@ouuan/tsconfig-vue/tsconfig.json",
+    "include": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "src/**/*.vue",
+        "src/**/*.d.ts",
+        "workers/src/**/*.ts",
+        "vite.config.ts"
+    ]
+}

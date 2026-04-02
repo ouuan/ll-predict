@@ -1,0 +1,17 @@
+name = "ll-predict"
+main = "workers/src/index.ts"
+compatibility_date = "2026-03-17"
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[vars]
+APP_ENV = "dev"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ll-predict"
+database_id = "2ee77793-90c6-4160-96e2-da23e7d3358b"
+migrations_dir = "workers/migrations"
