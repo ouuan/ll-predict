@@ -41,6 +41,53 @@ const mobileActualRows = computed(() =>
       operation: row.operation,
     })));
 
+interface SongToken {
+  id: string;
+  name: string;
+}
+
+const predictedSongs = computed<SongToken[]>(() =>
+  props.predictionItems
+    .filter((item) => item.type === 'song' && item.songId)
+    .map((item) => ({
+      id: String(item.songId),
+      name: item.songName?.trim() || String(item.songId),
+    })));
+
+const actualSongs = computed<SongToken[]>(() =>
+  props.actualSetlists
+    .filter((item) => item.contentType === 'song' && item.song)
+    .map((item) => ({
+      id: String(item.song?.id),
+      name: item.song?.name.trim() || String(item.song?.id),
+    })));
+
+function diffSongsByCount(source: SongToken[], target: SongToken[]): string[] {
+  const targetCounts = new Map<string, number>();
+
+  target.forEach((song) => {
+    targetCounts.set(song.id, (targetCounts.get(song.id) ?? 0) + 1);
+  });
+
+  const missingSongs: string[] = [];
+  source.forEach((song) => {
+    const remaining = targetCounts.get(song.id) ?? 0;
+    if (remaining > 0) {
+      targetCounts.set(song.id, remaining - 1);
+      return;
+    }
+    missingSongs.push(song.name);
+  });
+
+  return missingSongs;
+}
+
+const notPerformedSongs = computed(() =>
+  diffSongsByCount(predictedSongs.value, actualSongs.value));
+
+const notPredictedSongs = computed(() =>
+  diffSongsByCount(actualSongs.value, predictedSongs.value));
+
 function mobilePredictedClass(operation: 'equal' | 'insert' | 'delete' | 'replace'): string {
   if (operation === 'delete') return 'comparison-cell--delete';
   if (operation === 'replace') return 'comparison-cell--replace';
@@ -71,6 +118,50 @@ function mobileActualClass(operation: 'equal' | 'insert' | 'delete' | 'replace')
           {{ t('ui.comparisonIgnoresTextItems') }}
         </div>
       </n-space>
+
+      <div class="difference-tags-grid">
+        <div>
+          <div class="difference-tags-title">
+            <strong>{{ t('ui.songsNotPerformed') }}</strong>
+          </div>
+          <n-space size="small">
+            <n-tag
+              v-for="(song, index) of notPerformedSongs"
+              :key="`not-performed-${index}`"
+              type="warning"
+            >
+              {{ song }}
+            </n-tag>
+            <n-tag
+              v-if="notPerformedSongs.length === 0"
+              type="success"
+            >
+              {{ t('ui.none') }}
+            </n-tag>
+          </n-space>
+        </div>
+
+        <div>
+          <div class="difference-tags-title">
+            <strong>{{ t('ui.songsNotPredicted') }}</strong>
+          </div>
+          <n-space size="small">
+            <n-tag
+              v-for="(song, index) of notPredictedSongs"
+              :key="`not-predicted-${index}`"
+              type="warning"
+            >
+              {{ song }}
+            </n-tag>
+            <n-tag
+              v-if="notPredictedSongs.length === 0"
+              type="success"
+            >
+              {{ t('ui.none') }}
+            </n-tag>
+          </n-space>
+        </div>
+      </div>
 
       <div class="comparison-grid comparison-grid--desktop">
         <div class="comparison-head">
@@ -140,6 +231,17 @@ function mobileActualClass(operation: 'equal' | 'insert' | 'delete' | 'replace')
   align-items: stretch;
 }
 
+.difference-tags-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px 16px;
+}
+
+.difference-tags-title {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
 .comparison-mobile {
   display: none;
 }
@@ -180,6 +282,10 @@ function mobileActualClass(operation: 'equal' | 'insert' | 'delete' | 'replace')
 }
 
 @media (max-width: 900px) {
+  .difference-tags-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .comparison-grid--desktop {
     display: none;
   }
