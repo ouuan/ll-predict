@@ -68,10 +68,6 @@ onMounted(() => {
               </n-a>
             </div>
             <n-space align="center">
-              <n-tag>{{ t('ui.predictionsCount', { count: item.count }) }}</n-tag>
-              <n-tag type="info">
-                {{ item.ratio }}%
-              </n-tag>
               <router-link
                 :to="{
                   path: `/tours/${tourId}/performances/${performanceId}/predictions`,
@@ -82,9 +78,12 @@ onMounted(() => {
                   <template #icon>
                     <n-icon><list-outline /></n-icon>
                   </template>
-                  {{ t('ui.predictions') }}
+                  {{ t('ui.predictionsCount', { count: item.count }) }}
                 </n-button>
               </router-link>
+              <n-tag type="info">
+                {{ item.ratio }}%
+              </n-tag>
             </n-space>
           </n-space>
         </n-list-item>
