@@ -44,9 +44,6 @@ export const i18n = createI18n({
 export function setLocale(locale: SupportedLocale) {
   i18n.global.locale.value = locale;
   storedLocale.value = locale;
-  if (typeof document !== 'undefined') {
-    document.documentElement.lang = locale;
-  }
 }
 
 export function getLocale(): SupportedLocale {
@@ -58,8 +55,4 @@ export function t(key: string, values?: Record<string, unknown>) {
     return i18n.global.t(key, values);
   }
   return i18n.global.t(key);
-}
-
-if (typeof document !== 'undefined') {
-  document.documentElement.lang = i18n.global.locale.value;
 }

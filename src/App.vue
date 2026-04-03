@@ -15,7 +15,7 @@ import {
 
 const route = useRoute();
 const { isOnline } = useNetworkStatus();
-const { t } = useI18n();
+const { locale, t } = useI18n();
 const showSettingsModal = ref(false);
 
 type ThemeMode = 'light' | 'dark' | 'system';
@@ -64,6 +64,9 @@ const canonicalUrl = computed(() => {
 });
 
 useHead(computed(() => ({
+  htmlAttrs: {
+    lang: locale.value,
+  },
   title: documentTitle.value,
   meta: [
     { name: 'description', content: SITE_DESCRIPTION },
