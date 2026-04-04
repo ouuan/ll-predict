@@ -180,14 +180,14 @@ onMounted(() => {
                 </template>
                 <n-tag
                   v-if="
-                    prediction.hasSetlist
-                      || (prediction.tourStartsOn
-                        && Date.now() >= Date.parse(`${prediction.tourStartsOn}T00:00:00+09:00`))
+                    !prediction.hasSetlist
+                      && prediction.tourStartsOn
+                      && Date.now() >= Date.parse(`${prediction.tourStartsOn}T00:00:00+09:00`)
                   "
-                  :type="prediction.hasSetlist ? 'success' : 'warning'"
+                  type="warning"
                   size="small"
                 >
-                  {{ prediction.hasSetlist ? t('ui.setlistAvailable') : t('ui.submissionClosed') }}
+                  {{ t('ui.submissionClosed') }}
                 </n-tag>
               </div>
             </div>
