@@ -733,6 +733,30 @@ function mapPerformanceSetlists(
   });
 }
 
+function buildPerformanceStartsAt(
+  date: string | null | undefined,
+  startTime: string | null | undefined,
+): string | null {
+  if (!date) {
+    return null;
+  }
+
+  const normalizedStartTime = typeof startTime === 'string' && startTime.trim()
+    ? startTime.trim()
+    : '00:00';
+  const candidate = `${date}T${normalizedStartTime}:00+09:00`;
+  if (Number.isFinite(Date.parse(candidate))) {
+    return candidate;
+  }
+
+  const fallback = `${date}T00:00:00+09:00`;
+  if (Number.isFinite(Date.parse(fallback))) {
+    return fallback;
+  }
+
+  return null;
+}
+
 async function fetchPerformanceDetailFromLlFans(
   performanceId: string,
 ): Promise<PerformanceDetail | null> {
@@ -778,10 +802,7 @@ async function fetchPerformanceDetailFromLlFans(
   const mapped: PerformanceDetail = {
     id: toStringId(data.performance.id),
     setlists: mapPerformanceSetlists(data.performance.setlists),
-    startsAt:
-      data.performance.date && data.performance.startTime
-        ? `${data.performance.date}T${data.performance.startTime}:00+09:00`
-        : null,
+    startsAt: buildPerformanceStartsAt(data.performance.date, data.performance.startTime),
   };
   return mapped;
 }
