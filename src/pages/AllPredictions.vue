@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n';
 import ErrorAlert from '../components/common/ErrorAlert.vue';
 import LoadingSpinner from '../components/common/LoadingSpinner.vue';
 import { api } from '../composables/useApi';
+import { useResponsivePagination } from '../composables/useResponsivePagination';
 import type { Prediction } from '../types/domain';
 import { formatPredictionFullTime, formatPredictionTime } from '../utils/date';
 
@@ -21,6 +22,7 @@ const sort = ref<'created_at' | 'likes' | 'song_accuracy' | 'order_accuracy'>('c
 const hasSetlist = ref<'all' | 'true' | 'false'>('all');
 const onlyMine = ref(true);
 const errorMessage = ref('');
+const { paginationPageSlot } = useResponsivePagination();
 const sortOptions = computed(() => [
   { label: t('ui.sortOption.createdTime'), value: 'created_at' },
   { label: t('ui.sortOption.likes'), value: 'likes' },
@@ -206,15 +208,18 @@ onMounted(() => {
       />
     </loading-spinner>
 
-    <n-pagination
-      v-model:page="page"
-      v-model:page-size="pageSize"
-      :item-count="total"
-      :page-sizes="[10, 20, 50]"
-      show-size-picker
-      @update:page="fetchPredictions"
-      @update:page-size="onPageSizeChange"
-    />
+    <div class="pagination-wrap">
+      <n-pagination
+        v-model:page="page"
+        v-model:page-size="pageSize"
+        :item-count="total"
+        :page-slot="paginationPageSlot"
+        :page-sizes="[10, 20, 50]"
+        show-size-picker
+        @update:page="fetchPredictions"
+        @update:page-size="onPageSizeChange"
+      />
+    </div>
   </n-space>
 </template>
 
@@ -270,5 +275,10 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 2px;
+}
+
+.pagination-wrap {
+  display: flex;
+  justify-content: center;
 }
 </style>

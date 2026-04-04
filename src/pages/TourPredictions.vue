@@ -8,6 +8,7 @@ import { useRoute } from 'vue-router';
 import ErrorAlert from '../components/common/ErrorAlert.vue';
 import LoadingSpinner from '../components/common/LoadingSpinner.vue';
 import { api } from '../composables/useApi';
+import { useResponsivePagination } from '../composables/useResponsivePagination';
 import type { Prediction, TourListItem } from '../types/domain';
 import { formatPredictionFullTime, formatPredictionTime } from '../utils/date';
 
@@ -32,6 +33,7 @@ const page = ref(1);
 const pageSize = ref(10);
 const sort = ref<'likes' | 'created_at' | 'song_accuracy' | 'order_accuracy'>('created_at');
 const errorMessage = ref('');
+const { paginationPageSlot } = useResponsivePagination();
 const tour = ref<TourListItem | null>(null);
 const useAutoSort = ref(true);
 const selectedConcertName = computed(() => {
@@ -263,15 +265,18 @@ watchImmediate(
       />
     </loading-spinner>
 
-    <n-pagination
-      v-model:page="page"
-      v-model:page-size="pageSize"
-      :item-count="total"
-      :page-sizes="[10, 20, 50]"
-      show-size-picker
-      @update:page="fetchPredictions"
-      @update:page-size="onPageSizeChange"
-    />
+    <div class="pagination-wrap">
+      <n-pagination
+        v-model:page="page"
+        v-model:page-size="pageSize"
+        :item-count="total"
+        :page-slot="paginationPageSlot"
+        :page-sizes="[10, 20, 50]"
+        show-size-picker
+        @update:page="fetchPredictions"
+        @update:page-size="onPageSizeChange"
+      />
+    </div>
   </n-space>
 </template>
 
@@ -327,5 +332,10 @@ watchImmediate(
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 2px;
+}
+
+.pagination-wrap {
+  display: flex;
+  justify-content: center;
 }
 </style>

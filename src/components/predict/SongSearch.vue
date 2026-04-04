@@ -5,6 +5,7 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { api } from '../../composables/useApi';
 import { useArtistVariants } from '../../composables/useArtistVariants';
+import { useResponsivePagination } from '../../composables/useResponsivePagination';
 import type { SongItem, TopSongItem } from '../../types/domain';
 import { getSeriesOptions } from '../../utils/series';
 
@@ -25,6 +26,7 @@ const page = ref(1);
 const pageSize = ref(10);
 const total = ref(0);
 const seriesIds = ref(props.initialSeriesIds);
+const { paginationPageSlot } = useResponsivePagination();
 const showTopSongs = ref(false);
 const topSongsLoading = ref(false);
 const topSongs = ref<TopSongItem[]>([]);
@@ -281,18 +283,28 @@ defineExpose({
         :description="showTopSongs ? t('ui.noTopSongsYet') : t('ui.noSongsFound')"
       />
     </n-spin>
-    <n-pagination
+    <div
       v-if="!showTopSongs"
-      v-model:page="page"
-      v-model:page-size="pageSize"
-      :item-count="total"
-      show-size-picker
-      :page-sizes="[10, 20, 50]"
-    />
+      class="pagination-wrap"
+    >
+      <n-pagination
+        v-model:page="page"
+        v-model:page-size="pageSize"
+        :item-count="total"
+        :page-slot="paginationPageSlot"
+        show-size-picker
+        :page-sizes="[10, 20, 50]"
+      />
+    </div>
   </n-space>
 </template>
 
 <style scoped>
+.pagination-wrap {
+  display: flex;
+  justify-content: center;
+}
+
 @media (max-width: 640px) {
   .song-date {
     display: none;

@@ -7,6 +7,7 @@ import { useI18n } from 'vue-i18n';
 import ErrorAlert from '../components/common/ErrorAlert.vue';
 import LoadingSpinner from '../components/common/LoadingSpinner.vue';
 import { api } from '../composables/useApi';
+import { useResponsivePagination } from '../composables/useResponsivePagination';
 import type { TourListItem } from '../types/domain';
 import { formatDateRange } from '../utils/date';
 import { getSeriesColor, getSeriesLabel, getSeriesOptions } from '../utils/series';
@@ -19,6 +20,7 @@ const pageSize = ref(10);
 const total = ref(0);
 const tours = ref<TourListItem[]>([]);
 const errorMessage = ref('');
+const { paginationPageSlot } = useResponsivePagination();
 const selectedSeriesIds = useStorage<string[]>('tourListSeriesFilter', []);
 const hideClosedWithoutPredictions = useStorage(
   'tourListHideClosedWithoutPredictions',
@@ -178,15 +180,18 @@ onMounted(() => {
       </loading-spinner>
     </n-card>
 
-    <n-pagination
-      v-model:page="page"
-      v-model:page-size="pageSize"
-      :item-count="total"
-      :page-sizes="[10, 20, 50]"
-      show-size-picker
-      @update:page="fetchTours"
-      @update:page-size="fetchTours"
-    />
+    <div class="pagination-wrap">
+      <n-pagination
+        v-model:page="page"
+        v-model:page-size="pageSize"
+        :item-count="total"
+        :page-slot="paginationPageSlot"
+        :page-sizes="[10, 20, 50]"
+        show-size-picker
+        @update:page="fetchTours"
+        @update:page-size="fetchTours"
+      />
+    </div>
   </n-space>
 </template>
 
@@ -202,6 +207,11 @@ onMounted(() => {
 .tour-info {
   flex: 1 1 0;
   min-width: 0;
+}
+
+.pagination-wrap {
+  display: flex;
+  justify-content: center;
 }
 
 @media (max-width: 600px) {
