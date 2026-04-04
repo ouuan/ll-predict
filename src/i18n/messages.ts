@@ -136,7 +136,9 @@ export const messages = {
         nickname: 'Nickname',
         description: 'Description',
         cloneFromPredictionId: 'Clone From Prediction ID',
+        cloneOtherPrediction: 'Clone Other Prediction',
         textItem: 'Text Item',
+        addSong: 'Add Song',
         totalItems: 'Total items: {count}/100',
       },
       placeholders: {
@@ -164,6 +166,7 @@ export const messages = {
       action: {
         submitPrediction: 'Submit Prediction',
         addText: 'Add text',
+        searchSong: 'Search Song',
         deleteMyPrediction: 'Delete My Prediction',
       },
       confirm: {
@@ -325,7 +328,9 @@ export const messages = {
         nickname: '昵称',
         description: '说明',
         cloneFromPredictionId: '从预测 ID 克隆',
+        cloneOtherPrediction: '克隆其他预测',
         textItem: '文本项',
+        addSong: '添加歌曲',
         totalItems: '总项数：{count}/100',
       },
       placeholders: {
@@ -353,6 +358,7 @@ export const messages = {
       action: {
         submitPrediction: '提交预测',
         addText: '添加文本',
+        searchSong: '搜索歌曲',
         deleteMyPrediction: '删除我的预测',
       },
       confirm: {
@@ -514,7 +520,9 @@ export const messages = {
         nickname: 'ニックネーム',
         description: '説明',
         cloneFromPredictionId: '予想 ID からコピー',
+        cloneOtherPrediction: '他の予想をコピー',
         textItem: 'テキスト項目',
+        addSong: '曲を追加',
         totalItems: '合計項目: {count}/100',
       },
       placeholders: {
@@ -542,6 +550,7 @@ export const messages = {
       action: {
         submitPrediction: '予想を投稿',
         addText: 'テキスト追加',
+        searchSong: '曲を検索',
         deleteMyPrediction: '自分の予想を削除',
       },
       confirm: {

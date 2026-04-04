@@ -8,9 +8,8 @@ import { useRoute, useRouter } from 'vue-router';
 import ErrorAlert from '../components/common/ErrorAlert.vue';
 import LoadingSpinner from '../components/common/LoadingSpinner.vue';
 import SetlistEditor from '../components/predict/SetlistEditor.vue';
-import SongSearch from '../components/predict/SongSearch.vue';
 import { api } from '../composables/useApi';
-import type { PredictionDraftItem, SongItem, TourListItem } from '../types/domain';
+import type { PredictionDraftItem, TourListItem } from '../types/domain';
 import {
   validateDescription,
   validateNickname,
@@ -67,16 +66,6 @@ const nickname = useStorage('ll-predict-nickname', '');
 const description = ref('');
 const items = ref<PredictionDraftItem[]>([]);
 const submitting = ref(false);
-
-interface SetlistEditorExposed {
-  addSong: (song: SongItem) => void;
-}
-
-const setlistEditorRef = ref<SetlistEditorExposed | null>(null);
-
-function addSong(song: SongItem) {
-  setlistEditorRef.value?.addSong(song);
-}
 
 async function fetchTour() {
   loadingTour.value = true;
@@ -172,16 +161,12 @@ onMounted(() => {
     </loading-spinner>
 
     <template v-if="!loadingTour && !tourErrorMessage && !submissionClosed">
-      <song-search
-        :initial-series-ids="tour?.seriesIds ?? []"
-        :performance-id="performanceId"
-        @select="addSong"
-      />
       <setlist-editor
-        ref="setlistEditorRef"
         v-model="items"
         :clone-hint="cloneHint"
         :auto-clone-from-id="autoCloneFromId"
+        :initial-series-ids="tour?.seriesIds ?? []"
+        :performance-id="performanceId"
       />
 
       <n-card

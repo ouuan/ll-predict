@@ -1,14 +1,29 @@
 <script setup lang="ts">
+import {
+  AddOutline,
+  ArrowDownOutline,
+  ArrowUpOutline,
+  CloseOutline,
+  CopyOutline,
+  ReturnDownForwardOutline,
+  ReturnUpBackOutline,
+  SearchOutline,
+  SwapVerticalOutline,
+  TrashOutline,
+} from '@vicons/ionicons5';
 import { useMessage } from 'naive-ui';
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { api } from '../../composables/useApi';
 import type { PredictionDraftItem, SongItem } from '../../types/domain';
 import { validateTextItem } from '../../utils/validators';
+import SongSearch from './SongSearch.vue';
 
 const props = defineProps<{
   cloneHint?: string;
   autoCloneFromId?: string;
+  initialSeriesIds: string[];
+  performanceId?: string;
 }>();
 
 const model = defineModel<PredictionDraftItem[]>({ required: true });
@@ -22,6 +37,7 @@ const cloneLoading = ref(false);
 const cloneError = ref<string | null>(null);
 const showCloneReplaceConfirm = ref(false);
 const moveSourceIndex = ref<number | null>(null);
+const showSongSearchDialog = ref(false);
 
 function addSong(song: SongItem) {
   model.value.push({
@@ -164,22 +180,34 @@ defineExpose({
   <n-card
     :title="t('ui.setlistEditor')"
     size="small"
-    class="card-gap"
   >
     <n-space vertical>
       <div class="inline-muted">
         {{ countText }}
       </div>
+      <n-modal
+        v-model:show="showSongSearchDialog"
+        preset="card"
+        :title="t('ui.songSearch')"
+        display-directive="show"
+        style="width: min(960px, calc(100vw - 32px));"
+      >
+        <div class="song-search-dialog-body">
+          <song-search
+            :initial-series-ids="props.initialSeriesIds"
+            :performance-id="props.performanceId"
+            @select="addSong"
+          />
+        </div>
+      </n-modal>
       <div
         v-if="props.cloneHint"
         class="inline-muted"
       >
         {{ t('ui.cloneHint', { id: props.cloneHint }) }}
       </div>
-      <n-form
-        label-placement="top"
-      >
-        <n-form-item :label="t('ui.labels.cloneFromPredictionId')">
+      <n-form label-width="auto">
+        <n-form-item :label="t('ui.labels.cloneOtherPrediction')">
           <n-space>
             <n-input
               v-model:value="clonePredictionId"
@@ -190,9 +218,11 @@ defineExpose({
             <n-button
               v-if="model.length === 0"
               :loading="cloneLoading"
-              type="primary"
               @click="cloneFromPrediction"
             >
+              <template #icon>
+                <n-icon><copy-outline /></n-icon>
+              </template>
               {{ t('ui.clone') }}
             </n-button>
             <n-popconfirm
@@ -204,12 +234,27 @@ defineExpose({
             >
               <template #trigger>
                 <n-button :loading="cloneLoading">
+                  <template #icon>
+                    <n-icon><copy-outline /></n-icon>
+                  </template>
                   {{ t('ui.clone') }}
                 </n-button>
               </template>
               {{ t('ui.cloneReplaceConfirm') }}
             </n-popconfirm>
           </n-space>
+          <template
+            v-if="cloneError"
+            #feedback
+          >
+            <n-tag
+              type="error"
+              closable
+              @close="cloneError = null"
+            >
+              {{ cloneError }}
+            </n-tag>
+          </template>
         </n-form-item>
         <n-form-item :label="t('ui.labels.textItem')">
           <n-space>
@@ -222,23 +267,39 @@ defineExpose({
               @keydown.enter.prevent="addTextItem"
             />
             <n-button @click="addTextItem">
-              {{ t('ui.action.addText') }}
+              <template #icon>
+                <n-icon><add-outline /></n-icon>
+              </template>
+              {{ t('ui.add') }}
             </n-button>
           </n-space>
+          <template
+            v-if="textError"
+            #feedback
+          >
+            <n-tag
+              type="error"
+              closable
+              @close="textError = null"
+            >
+              {{ textError }}
+            </n-tag>
+          </template>
+        </n-form-item>
+        <n-form-item
+          :label="t('ui.labels.addSong')"
+        >
+          <n-button
+            type="primary"
+            @click="showSongSearchDialog = true"
+          >
+            <template #icon>
+              <n-icon><search-outline /></n-icon>
+            </template>
+            {{ t('ui.action.searchSong') }}
+          </n-button>
         </n-form-item>
       </n-form>
-      <n-tag
-        v-if="textError"
-        type="error"
-      >
-        {{ textError }}
-      </n-tag>
-      <n-tag
-        v-if="cloneError"
-        type="error"
-      >
-        {{ cloneError }}
-      </n-tag>
 
       <n-list
         v-if="model.length > 0"
@@ -286,18 +347,27 @@ defineExpose({
                   size="small"
                   @click="move(index, -1)"
                 >
+                  <template #icon>
+                    <n-icon><arrow-up-outline /></n-icon>
+                  </template>
                   {{ t('ui.up') }}
                 </n-button>
                 <n-button
                   size="small"
                   @click="move(index, 1)"
                 >
+                  <template #icon>
+                    <n-icon><arrow-down-outline /></n-icon>
+                  </template>
                   {{ t('ui.down') }}
                 </n-button>
                 <n-button
                   size="small"
                   @click="startMoveTo(index)"
                 >
+                  <template #icon>
+                    <n-icon><swap-vertical-outline /></n-icon>
+                  </template>
                   {{ t('ui.moveTo') }}
                 </n-button>
               </template>
@@ -307,12 +377,18 @@ defineExpose({
                     size="small"
                     @click="moveTo(index, 'above')"
                   >
+                    <template #icon>
+                      <n-icon><return-up-back-outline /></n-icon>
+                    </template>
                     {{ t('ui.above') }}
                   </n-button>
                   <n-button
                     size="small"
                     @click="moveTo(index, 'below')"
                   >
+                    <template #icon>
+                      <n-icon><return-down-forward-outline /></n-icon>
+                    </template>
                     {{ t('ui.below') }}
                   </n-button>
                 </template>
@@ -321,6 +397,9 @@ defineExpose({
                   size="small"
                   @click="cancelMoveTo"
                 >
+                  <template #icon>
+                    <n-icon><close-outline /></n-icon>
+                  </template>
                   {{ t('ui.cancel') }}
                 </n-button>
               </template>
@@ -335,6 +414,9 @@ defineExpose({
                     size="small"
                     type="error"
                   >
+                    <template #icon>
+                      <n-icon><trash-outline /></n-icon>
+                    </template>
                     {{ t('ui.delete') }}
                   </n-button>
                 </template>
@@ -386,6 +468,11 @@ defineExpose({
   flex: 0 0 auto;
 }
 
+.song-search-dialog-body {
+  max-height: calc(100vh - 170px);
+  overflow: auto;
+}
+
 @media (max-width: 900px) {
   .setlist-row {
     flex-wrap: wrap;
@@ -394,6 +481,10 @@ defineExpose({
 
   .setlist-note {
     width: 100%;
+  }
+
+  .setlist-actions :deep(.n-button__icon) {
+    display: none;
   }
 }
 </style>
