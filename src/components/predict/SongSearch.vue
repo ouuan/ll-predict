@@ -161,10 +161,7 @@ defineExpose({
     class="card-gap"
   >
     <n-space vertical>
-      <n-space
-        align="center"
-        justify="space-between"
-      >
+      <n-space align="center">
         <span>{{ t('ui.showTopSongs') }}</span>
         <n-switch
           v-model:value="showTopSongs"
