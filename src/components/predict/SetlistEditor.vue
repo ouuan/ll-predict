@@ -190,7 +190,7 @@ defineExpose({
         preset="card"
         :title="t('ui.songSearch')"
         display-directive="show"
-        style="width: min(960px, calc(100vw - 32px));"
+        style="width: min(960px, calc(95vw - 25px));"
       >
         <div class="song-search-dialog-body">
           <song-search
@@ -453,6 +453,7 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 200px;
 }
 
 .setlist-type-icon {
@@ -460,7 +461,7 @@ defineExpose({
 }
 
 .setlist-note {
-  width: 280px;
+  width: 240px;
   flex: 0 0 auto;
 }
 
@@ -469,11 +470,11 @@ defineExpose({
 }
 
 .song-search-dialog-body {
-  max-height: calc(100vh - 170px);
+  max-height: calc(90vh - 150px);
   overflow: auto;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   .setlist-row {
     flex-wrap: wrap;
     align-items: flex-start;
