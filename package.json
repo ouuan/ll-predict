@@ -18,7 +18,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@unhead/vue": "2.1.12",
+    "@unhead/vue": "2.1.13",
     "@vicons/ionicons5": "0.13.0",
     "@vueuse/core": "14.2.1",
     "date-fns": "4.1.0",
