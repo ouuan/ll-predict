@@ -126,13 +126,11 @@ export interface SearchSongsPayload extends QueryListPayload {
 export interface NominateSongPayload {
   tourId: string;
   songId: string;
-  songName: string;
 }
 
 export interface VoteSingleSongPayload {
   tourId: string;
   songId: string;
-  songName?: string;
   vote: 'will_sing' | 'wont_sing';
 }
 
@@ -167,7 +165,29 @@ export const api = {
   },
 
   async createPrediction(payload: CreatePredictionPayload): Promise<ApiEnvelope<{ id: number }>> {
-    return request('/predictions', { method: 'POST', body: payload });
+    const sanitizedItems = payload.items.map((item) => {
+      if (item.type === 'song') {
+        return {
+          type: 'song' as const,
+          songId: item.songId,
+          note: item.note,
+        };
+      }
+
+      return {
+        type: 'text' as const,
+        text: item.text,
+        note: item.note,
+      };
+    });
+
+    return request('/predictions', {
+      method: 'POST',
+      body: {
+        ...payload,
+        items: sanitizedItems,
+      },
+    });
   },
 
   async deletePrediction(id: string | number): Promise<ApiEnvelope<{ ok: true }>> {

@@ -209,7 +209,6 @@ async function nominateSong(song: SongItem) {
     await api.nominateSong(performanceId.value, {
       tourId: tourId.value,
       songId: song.id,
-      songName: song.name,
     });
     message.success(t('feedback.songNominated', { name: song.name }));
     showSongSearchDialog.value = false;
@@ -239,7 +238,6 @@ async function voteSong(song: SingleSongPredictionItem, vote: 'will_sing' | 'won
       await api.voteSingleSong(performanceId.value, {
         tourId: tourId.value,
         songId: song.songId,
-        songName: song.songName,
         vote: nextVote,
       });
     }

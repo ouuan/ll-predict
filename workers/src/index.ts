@@ -75,7 +75,6 @@ const predictionItemBaseSchema = z.object({
 const predictionSongItemSchema = predictionItemBaseSchema.extend({
   type: z.literal('song'),
   songId: nonEmptyStringSchema,
-  songName: nonEmptyStringSchema,
 });
 
 const predictionTextItemSchema = predictionItemBaseSchema.extend({
@@ -118,14 +117,11 @@ const listPredictionsQuerySchema = z.object({
 const nominateSongBodySchema = z.object({
   tourId: nonEmptyStringSchema,
   songId: nonEmptyStringSchema,
-  songName: nonEmptyStringSchema,
 });
 
 const voteSingleSongBodySchema = z.object({
   tourId: nonEmptyStringSchema,
   songId: nonEmptyStringSchema,
-  songName: z.string().trim().min(1)
-    .optional(),
   vote: z.enum(['will_sing', 'wont_sing']),
 });
 
@@ -286,6 +282,20 @@ interface LlFansPerformanceDetailResponse {
   };
 }
 
+interface LlFansPerformanceNameResponse {
+  performance?: {
+    id: string | number;
+    name?: string | null;
+  } | null;
+}
+
+interface LlFansSongNameResponse {
+  song?: {
+    id: string | number;
+    name?: string | null;
+  } | null;
+}
+
 interface PredictionDraftItem {
   type: 'song' | 'text';
   songId?: string;
@@ -310,6 +320,11 @@ interface Prediction {
   orderAccuracy: number | null;
   sessionId: string;
   items: PredictionDraftItem[];
+}
+
+interface NameCacheDbRow {
+  id: string;
+  name: string;
 }
 
 const tourCache = new Map<string, Tour>();
@@ -396,6 +411,207 @@ function parsePerformanceCacheRow(row: PerformanceCacheDbRow): CachedPerformance
   } catch {
     return null;
   }
+}
+
+async function loadPerformanceNameCacheMap(
+  db: D1LikeDatabase,
+  performanceIds: string[],
+): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+  if (performanceIds.length === 0) {
+    return result;
+  }
+
+  const placeholders = performanceIds.map(() => '?').join(',');
+  const rows = await db.prepare(
+    `
+      SELECT performance_id AS id, name
+      FROM performance_names
+      WHERE performance_id IN (${placeholders})
+    `,
+  ).bind(...performanceIds).all<NameCacheDbRow>();
+
+  for (const row of rows.results) {
+    result.set(row.id, row.name);
+  }
+
+  return result;
+}
+
+async function loadSongNameCacheMap(
+  db: D1LikeDatabase,
+  songIds: string[],
+): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+  if (songIds.length === 0) {
+    return result;
+  }
+
+  const placeholders = songIds.map(() => '?').join(',');
+  const rows = await db.prepare(
+    `
+      SELECT song_id AS id, name
+      FROM song_names
+      WHERE song_id IN (${placeholders})
+    `,
+  ).bind(...songIds).all<NameCacheDbRow>();
+
+  for (const row of rows.results) {
+    result.set(row.id, row.name);
+  }
+
+  return result;
+}
+
+async function upsertPerformanceName(
+  db: D1LikeDatabase,
+  performanceId: string,
+  name: string,
+) {
+  await db.prepare(
+    `
+      INSERT INTO performance_names (performance_id, name)
+      VALUES (?, ?)
+      ON CONFLICT(performance_id) DO UPDATE SET
+        name = excluded.name
+      WHERE performance_names.name <> excluded.name
+    `,
+  ).bind(performanceId, name).run();
+}
+
+async function upsertSongName(
+  db: D1LikeDatabase,
+  songId: string,
+  name: string,
+) {
+  await db.prepare(
+    `
+      INSERT INTO song_names (song_id, name)
+      VALUES (?, ?)
+      ON CONFLICT(song_id) DO UPDATE SET
+        name = excluded.name
+      WHERE song_names.name <> excluded.name
+    `,
+  ).bind(songId, name).run();
+}
+
+async function upsertPerformanceNamesFromTour(db: D1LikeDatabase, tour: Tour) {
+  const entries = tour.concerts.flatMap((concert) => {
+    return concert.performances
+      .map((performance) => ({ id: performance.id, name: performance.name.trim() }))
+      .filter((item) => item.id && item.name);
+  });
+
+  await Promise.all(entries.map((entry) => {
+    return upsertPerformanceName(db, entry.id, entry.name);
+  }));
+}
+
+async function upsertSongNamesFromSetlists(db: D1LikeDatabase, setlists: SetlistItem[]) {
+  const map = new Map<string, string>();
+  for (const setlist of setlists) {
+    if (setlist.contentType !== 'song' || !setlist.song) {
+      continue;
+    }
+
+    const name = setlist.song.name.trim();
+    if (!name) {
+      continue;
+    }
+    map.set(setlist.song.id, name);
+  }
+
+  await Promise.all([...map.entries()].map(([songId, name]) => {
+    return upsertSongName(db, songId, name);
+  }));
+}
+
+async function resolvePerformanceNameMap(
+  db: D1LikeDatabase,
+  performanceIds: string[],
+): Promise<Map<string, string>> {
+  const uniqueIds = [...new Set(performanceIds)].filter(Boolean);
+  const result = new Map<string, string>();
+  if (uniqueIds.length === 0) {
+    return result;
+  }
+
+  const cacheMap = await loadPerformanceNameCacheMap(db, uniqueIds);
+  const idsToRefresh: string[] = [];
+
+  for (const performanceId of uniqueIds) {
+    const cached = cacheMap.get(performanceId);
+    if (!cached) {
+      idsToRefresh.push(performanceId);
+      continue;
+    }
+
+    result.set(performanceId, cached);
+  }
+
+  if (idsToRefresh.length === 0) {
+    return result;
+  }
+
+  await Promise.all(idsToRefresh.map(async (performanceId) => {
+    try {
+      const freshName = await fetchPerformanceNameFromLlFans(performanceId);
+      if (!freshName) {
+        return;
+      }
+
+      result.set(performanceId, freshName);
+      await upsertPerformanceName(db, performanceId, freshName);
+    } catch {
+      // Keep stale value when refresh fails.
+    }
+  }));
+
+  return result;
+}
+
+async function resolveSongNameMap(
+  db: D1LikeDatabase,
+  songIds: string[],
+): Promise<Map<string, string>> {
+  const uniqueIds = [...new Set(songIds)].filter(Boolean);
+  const result = new Map<string, string>();
+  if (uniqueIds.length === 0) {
+    return result;
+  }
+
+  const cacheMap = await loadSongNameCacheMap(db, uniqueIds);
+  const idsToRefresh: string[] = [];
+
+  for (const songId of uniqueIds) {
+    const cached = cacheMap.get(songId);
+    if (!cached) {
+      idsToRefresh.push(songId);
+      continue;
+    }
+
+    result.set(songId, cached);
+  }
+
+  if (idsToRefresh.length === 0) {
+    return result;
+  }
+
+  await Promise.all(idsToRefresh.map(async (songId) => {
+    try {
+      const freshName = await fetchSongNameFromLlFans(songId);
+      if (!freshName) {
+        return;
+      }
+
+      result.set(songId, freshName);
+      await upsertSongName(db, songId, freshName);
+    } catch {
+      // Keep stale value when refresh fails.
+    }
+  }));
+
+  return result;
 }
 
 async function getFreshPerformanceDetailFromDb(
@@ -826,6 +1042,46 @@ async function fetchPerformanceDetailFromLlFans(
   return mapped;
 }
 
+async function fetchPerformanceNameFromLlFans(performanceId: string): Promise<string | null> {
+  const query = `
+    query EventDetailPage_PerformanceName($id: ID!) {
+      performance(id: $id) {
+        id
+        name
+      }
+    }
+  `;
+
+  const data = await llFansGraphqlRequest<LlFansPerformanceNameResponse>(
+    'EventDetailPage_PerformanceName',
+    query,
+    { id: performanceId },
+  );
+
+  const name = data.performance?.name?.trim();
+  return name || null;
+}
+
+async function fetchSongNameFromLlFans(songId: string): Promise<string | null> {
+  const query = `
+    query SongDetailForName($id: ID!) {
+      song(id: $id) {
+        id
+        name
+      }
+    }
+  `;
+
+  const data = await llFansGraphqlRequest<LlFansSongNameResponse>(
+    'SongDetailForName',
+    query,
+    { id: songId },
+  );
+
+  const name = data.song?.name?.trim();
+  return name || null;
+}
+
 async function getPerformanceDetail(
   performanceId: string,
   forceRefresh: boolean,
@@ -851,6 +1107,7 @@ async function getPerformanceDetail(
   const fetchedAt = Date.now();
   setPerformanceDetailCache(detail, fetchedAt);
   await writePerformanceDetailToDb(db, detail, new Date(fetchedAt).toISOString());
+  await upsertSongNamesFromSetlists(db, detail.setlists);
   return detail;
 }
 
@@ -859,7 +1116,6 @@ interface PredictionDbRow {
   tour_id: string;
   concert_id: string;
   performance_id: string;
-  performance_name: string;
   nickname: string;
   description: string | null;
   created_at: string;
@@ -873,14 +1129,12 @@ interface PredictionItemDbRow {
   item_order: number | string;
   item_type: string;
   song_id: string | null;
-  song_name: string | null;
   text: string | null;
   note: string | null;
 }
 
 interface SingleSongPredictionDbRow {
   song_id: string;
-  song_name: string;
   will_sing_count: number | string;
   wont_sing_count: number | string;
   my_vote: 'will_sing' | 'wont_sing' | null;
@@ -900,14 +1154,18 @@ function getDatabase(c: Context<{ Bindings: AppBindings }>): D1LikeDatabase {
   return c.env.DB;
 }
 
-function rowToPrediction(row: PredictionDbRow, items: PredictionDraftItem[]): Prediction {
+function rowToPrediction(
+  row: PredictionDbRow,
+  items: PredictionDraftItem[],
+  performanceName: string,
+): Prediction {
   return {
     id: Number(row.id),
     tourId: row.tour_id,
     concertId: row.concert_id,
     performanceId: row.performance_id,
-    performanceName: row.performance_name,
-    performanceTitle: buildPerformanceTitle(row.tour_id, row.concert_id, row.performance_name),
+    performanceName,
+    performanceTitle: buildPerformanceTitle(row.tour_id, row.concert_id, performanceName),
     nickname: row.nickname,
     description: row.description,
     createdAt: row.created_at,
@@ -937,7 +1195,6 @@ async function loadPredictionItemsMap(
         item_order,
         item_type,
         song_id,
-        song_name,
         text,
         note
       FROM prediction_items
@@ -956,7 +1213,6 @@ async function loadPredictionItemsMap(
       ? {
           type: 'song',
           songId: row.song_id ?? undefined,
-          songName: row.song_name ?? undefined,
           note: row.note ?? undefined,
         }
       : {
@@ -1077,7 +1333,6 @@ async function listPredictionsFromDb(
       p.tour_id,
       p.concert_id,
       p.performance_id,
-      p.performance_name,
       p.nickname,
       p.description,
       p.created_at,
@@ -1096,12 +1351,35 @@ async function listPredictionsFromDb(
     .map((row) => Number(row.id))
     .filter((id) => Number.isSafeInteger(id));
   const itemsMap = await loadPredictionItemsMap(db, predictionIds);
+  const performanceNameMap = await resolvePerformanceNameMap(
+    db,
+    rows.results.map((row) => row.performance_id),
+  );
+  const songIds = [...new Set([...itemsMap.values()].flatMap((items) => {
+    return items
+      .filter((item): item is PredictionDraftItem & { type: 'song'; songId: string } => {
+        return item.type === 'song' && typeof item.songId === 'string';
+      })
+      .map((item) => item.songId);
+  }))];
+  const songNameMap = await resolveSongNameMap(db, songIds);
 
   return rows.results
     .map((row) => {
       const predictionId = Number(row.id);
-      const items = itemsMap.get(predictionId) ?? [];
-      return rowToPrediction(row, items);
+      const items = (itemsMap.get(predictionId) ?? []).map((item) => {
+        if (item.type !== 'song' || !item.songId) {
+          return item;
+        }
+
+        return {
+          ...item,
+          songName: songNameMap.get(item.songId) ?? item.songId,
+        };
+      });
+
+      const performanceName = performanceNameMap.get(row.performance_id) ?? 'Unknown';
+      return rowToPrediction(row, items, performanceName);
     });
 }
 
@@ -1109,22 +1387,18 @@ async function upsertSongNomination(
   db: D1LikeDatabase,
   performanceId: string,
   songId: string,
-  songName: string,
 ) {
   await db.prepare(
     `
       INSERT INTO song_nominations (
         performance_id,
-        song_id,
-        song_name
-      ) VALUES (?, ?, ?)
-      ON CONFLICT(performance_id, song_id) DO UPDATE SET
-        song_name = excluded.song_name
+        song_id
+      ) VALUES (?, ?)
+      ON CONFLICT(performance_id, song_id) DO NOTHING
     `,
   ).bind(
     performanceId,
     songId,
-    songName,
   ).run();
 }
 
@@ -1154,14 +1428,17 @@ async function upsertSingleSongVote(
   ).run();
 }
 
-function toSingleSongPredictionItem(row: SingleSongPredictionDbRow): SingleSongPredictionItem {
+function toSingleSongPredictionItem(
+  row: SingleSongPredictionDbRow,
+  songNameMap: Map<string, string>,
+): SingleSongPredictionItem {
   const willSingCount = Number(row.will_sing_count);
   const wontSingCount = Number(row.wont_sing_count);
   const totalVotes = willSingCount + wontSingCount;
 
   return {
     songId: row.song_id,
-    songName: row.song_name,
+    songName: songNameMap.get(row.song_id) ?? row.song_id,
     willSingCount,
     wontSingCount,
     willSingRatio: totalVotes === 0 ? 0 : Math.round((willSingCount / totalVotes) * 10000) / 100,
@@ -1179,7 +1456,6 @@ async function listSingleSongPredictions(
     `
       SELECT
         n.song_id,
-        n.song_name,
         COALESCE(SUM(CASE WHEN v.vote = 'will_sing' THEN 1 ELSE 0 END), 0) AS will_sing_count,
         COALESCE(SUM(CASE WHEN v.vote = 'wont_sing' THEN 1 ELSE 0 END), 0) AS wont_sing_count,
         MAX(CASE WHEN v.session_id = ? THEN v.vote ELSE NULL END) AS my_vote
@@ -1188,7 +1464,7 @@ async function listSingleSongPredictions(
         ON v.performance_id = n.performance_id
        AND v.song_id = n.song_id
       WHERE n.performance_id = ?
-      GROUP BY n.song_id, n.song_name
+      GROUP BY n.song_id
       ORDER BY
         will_sing_count DESC,
         wont_sing_count ASC,
@@ -1196,7 +1472,11 @@ async function listSingleSongPredictions(
     `,
   ).bind(sessionId, performanceId).all<SingleSongPredictionDbRow>();
 
-  return rows.results.map((row) => toSingleSongPredictionItem(row));
+  const songNameMap = await resolveSongNameMap(
+    db,
+    rows.results.map((row) => row.song_id),
+  );
+  return rows.results.map((row) => toSingleSongPredictionItem(row, songNameMap));
 }
 
 function jsonError(code: string, message: string, status: number, details?: unknown) {
@@ -1455,6 +1735,7 @@ app.get('/api/ll-fans/tours/:id', async (c) => {
     if (!tour) {
       return jsonError('TOUR_NOT_FOUND', `Tour ${id} does not exist.`, 404);
     }
+    await upsertPerformanceNamesFromTour(db, tour);
     const predictionsCount = await countPredictionsByTourId(db, tour.id);
     tour.predictionsCount = predictionsCount;
 
@@ -1534,6 +1815,7 @@ app.post('/api/ll-fans/tours', async (c) => {
 });
 
 app.post('/api/ll-fans/search-songs', async (c) => {
+  const db = getDatabase(c);
   const rawBody = await readJsonBody(c);
   if (!rawBody.ok) {
     return rawBody.response;
@@ -1558,6 +1840,10 @@ app.post('/api/ll-fans/search-songs', async (c) => {
       page,
       pageSize,
     });
+
+    await Promise.all(result.items
+      .filter((song) => song.id && song.name.trim())
+      .map((song) => upsertSongName(db, song.id, song.name.trim())));
 
     return c.json({
       data: {
@@ -1702,7 +1988,7 @@ app.post('/api/predictions', async (c) => {
   }
 
   let concertId = '';
-  let performanceName = 'Unknown';
+  let performanceName = '';
   tour.concerts.some((concert) => {
     const performance = concert.performances.find((item) => item.id === body.performanceId);
     if (!performance) {
@@ -1722,6 +2008,9 @@ app.post('/api/predictions', async (c) => {
   }
 
   const createdAt = new Date().toISOString();
+  if (performanceName.trim()) {
+    await upsertPerformanceName(db, body.performanceId, performanceName.trim());
+  }
 
   await warmPerformanceDetailsCache(db, [body.performanceId]);
   let createdPredictionId: number | null = null;
@@ -1732,18 +2021,16 @@ app.post('/api/predictions', async (c) => {
           tour_id,
           concert_id,
           performance_id,
-          performance_name,
           nickname,
           description,
           created_at,
           session_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
       `,
     ).bind(
       body.tourId,
       concertId,
       body.performanceId,
-      performanceName,
       body.nickname,
       body.description ?? null,
       createdAt,
@@ -1764,35 +2051,33 @@ app.post('/api/predictions', async (c) => {
             item_order,
             item_type,
             song_id,
-            song_name,
             text,
             note
-          ) VALUES (?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?)
         `,
       ).bind(
         id,
         index,
         item.type,
         item.type === 'song' ? item.songId : null,
-        item.type === 'song' ? item.songName : null,
         item.type === 'text' ? item.text : null,
         item.note ?? null,
       ).run();
     }));
 
-    const uniqueSongs = new Map<string, string>();
+    const uniqueSongIds = new Set<string>();
     body.items.forEach((item) => {
-      if (item.type !== 'song' || !item.songId || !item.songName) {
+      if (item.type !== 'song' || !item.songId) {
         return;
       }
-      uniqueSongs.set(item.songId, item.songName);
+      uniqueSongIds.add(item.songId);
     });
 
-    await Promise.all([...uniqueSongs.entries()].map(([songId, songName]) => {
-      return upsertSongNomination(db, body.performanceId, songId, songName);
+    await Promise.all([...uniqueSongIds].map((songId) => {
+      return upsertSongNomination(db, body.performanceId, songId);
     }));
 
-    await Promise.all([...uniqueSongs.keys()].map((songId) => {
+    await Promise.all([...uniqueSongIds].map((songId) => {
       return upsertSingleSongVote(db, body.performanceId, songId, 'will_sing', sessionId);
     }));
 
@@ -2134,7 +2419,7 @@ app.post('/api/performances/:performanceId/song-predictions/nominate', async (c)
   }
 
   const { performanceId } = pathValidation.data;
-  const { tourId, songId, songName } = bodyValidation.data;
+  const { tourId, songId } = bodyValidation.data;
 
   let tour: Tour | null;
   try {
@@ -2159,7 +2444,7 @@ app.post('/api/performances/:performanceId/song-predictions/nominate', async (c)
     return jsonError('SUBMISSION_CLOSED', 'Prediction submission is closed for this tour.', 409);
   }
 
-  await upsertSongNomination(db, performanceId, songId, songName);
+  await upsertSongNomination(db, performanceId, songId);
   await upsertSingleSongVote(db, performanceId, songId, 'will_sing', sessionId);
 
   return c.json({ data: { ok: true } }, 201);
@@ -2185,7 +2470,7 @@ app.post('/api/performances/:performanceId/song-predictions/vote', async (c) => 
 
   const { performanceId } = pathValidation.data;
   const {
-    tourId, songId, songName, vote,
+    tourId, songId, vote,
   } = bodyValidation.data;
 
   let tour: Tour | null;
@@ -2221,10 +2506,7 @@ app.post('/api/performances/:performanceId/song-predictions/vote', async (c) => 
   ).bind(performanceId, songId).first();
 
   if (!existingNomination) {
-    if (!songName) {
-      return jsonError('INVALID_PARAMS', 'songName is required when nominating a new song.', 400);
-    }
-    await upsertSongNomination(db, performanceId, songId, songName);
+    await upsertSongNomination(db, performanceId, songId);
   }
 
   await upsertSingleSongVote(db, performanceId, songId, vote, sessionId);
