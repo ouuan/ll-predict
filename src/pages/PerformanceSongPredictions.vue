@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useHead } from '@unhead/vue';
 import {
   AddOutline,
   ArrowBackOutline,
@@ -64,6 +65,7 @@ const contextTitle = computed(() => {
   }
 
   const parts = [tour.value.name];
+
   if (selectedConcertName.value) {
     parts.push(selectedConcertName.value);
   }
@@ -73,6 +75,26 @@ const contextTitle = computed(() => {
 
   return parts.join(' ');
 });
+
+const pageDocumentTitle = computed(() => {
+  const parts: string[] = [];
+
+  parts.push(t('app.pageTitle.songPredictions'));
+
+  if (contextTitle.value) {
+    parts.push(contextTitle.value);
+  }
+
+  parts.push(t('app.name'));
+  return parts.join(' - ');
+});
+
+useHead(computed(() => ({
+  title: pageDocumentTitle.value,
+  meta: [
+    { property: 'og:title', content: pageDocumentTitle.value },
+  ],
+})));
 
 function toVoteRatios(willSingCount: number, wontSingCount: number) {
   const total = willSingCount + wontSingCount;
@@ -88,7 +110,10 @@ function applyVoteLocally(songId: string, nextVote: 'will_sing' | 'wont_sing' | 
       return item;
     }
 
-    let { willSingCount, wontSingCount } = item;
+    let { willSingCount, wontSingCount }: {
+      willSingCount: number;
+      wontSingCount: number;
+    } = item;
 
     if (item.myVote === 'will_sing') {
       willSingCount = Math.max(0, willSingCount - 1);

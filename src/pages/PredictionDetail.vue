@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useHead } from '@unhead/vue';
 import {
   CopyOutline,
   ImageOutline,
@@ -36,6 +37,35 @@ const shareImageDataUrl = ref('');
 const shareImageFilename = ref('');
 const errorMessage = ref('');
 const hasActualSetlist = computed(() => (performanceDetail.value?.setlists.length ?? 0) > 0);
+const predictionContextName = computed(() =>
+  prediction.value?.performanceTitle
+  || prediction.value?.performanceName
+  || '');
+const predictionTitleLabel = computed(() => {
+  const nickname = prediction.value?.nickname.trim();
+  if (nickname) {
+    return t('ui.predictionByNicknameTitle', { nickname });
+  }
+  return t('app.pageTitle.predictionDetail');
+});
+const pageDocumentTitle = computed(() => {
+  const parts: string[] = [];
+
+  parts.push(predictionTitleLabel.value);
+  if (predictionContextName.value) {
+    parts.push(predictionContextName.value);
+  }
+  parts.push(t('app.name'));
+
+  return parts.join(' - ');
+});
+
+useHead(computed(() => ({
+  title: pageDocumentTitle.value,
+  meta: [
+    { property: 'og:title', content: pageDocumentTitle.value },
+  ],
+})));
 
 async function fetchPrediction() {
   loading.value = true;

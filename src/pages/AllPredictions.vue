@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useHead } from '@unhead/vue';
 import { EyeOutline } from '@vicons/ionicons5';
 import { useMessage } from 'naive-ui';
 import { computed, onMounted, ref } from 'vue';
@@ -12,6 +13,17 @@ import { formatPredictionFullTime, formatPredictionTime } from '../utils/date';
 
 const message = useMessage();
 const { t, locale } = useI18n();
+const pageDocumentTitle = computed(() => [
+  t('app.pageTitle.myPredictions'),
+  t('app.name'),
+].join(' - '));
+
+useHead(computed(() => ({
+  title: pageDocumentTitle.value,
+  meta: [
+    { property: 'og:title', content: pageDocumentTitle.value },
+  ],
+})));
 
 const loading = ref(false);
 const items = ref<Prediction[]>([]);

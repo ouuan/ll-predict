@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useHead } from '@unhead/vue';
 import { EyeOutline } from '@vicons/ionicons5';
 import { useStorage } from '@vueuse/core';
 import { useMessage } from 'naive-ui';
@@ -14,6 +15,18 @@ import { getSeriesColor, getSeriesLabel, getSeriesOptions } from '../utils/serie
 
 const message = useMessage();
 const { t, locale } = useI18n();
+const pageDocumentTitle = computed(() => [
+  t('app.pageTitle.tourList'),
+  t('app.name'),
+].join(' - '));
+
+useHead(computed(() => ({
+  title: pageDocumentTitle.value,
+  meta: [
+    { property: 'og:title', content: pageDocumentTitle.value },
+  ],
+})));
+
 const loading = ref(false);
 const page = ref(1);
 const pageSize = ref(10);

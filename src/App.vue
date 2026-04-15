@@ -58,7 +58,6 @@ const pageTitle = computed(() => {
   return t('app.pageTitle.default');
 });
 
-const documentTitle = computed(() => `${pageTitle.value} - ${t('app.name')}`);
 const canonicalUrl = computed(() => {
   const path = route.fullPath.split('#')[0] ?? '/';
   return new URL(path, SITE_URL).toString();
@@ -68,10 +67,10 @@ useHead(computed(() => ({
   htmlAttrs: {
     lang: locale.value,
   },
-  title: documentTitle.value,
+  title: t('app.name'),
   meta: [
     { name: 'description', content: SITE_DESCRIPTION },
-    { property: 'og:title', content: documentTitle.value },
+    { property: 'og:title', content: t('app.name') },
     { property: 'og:description', content: SITE_DESCRIPTION },
     { property: 'og:type', content: 'website' },
     { property: 'og:url', content: canonicalUrl.value },

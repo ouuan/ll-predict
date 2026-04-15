@@ -1,8 +1,21 @@
 <script setup lang="ts">
+import { useHead } from '@unhead/vue';
 import { ArrowBackOutline } from '@vicons/ionicons5';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
+const pageDocumentTitle = computed(() => [
+  t('ui.pageNotFound'),
+  t('app.name'),
+].join(' - '));
+
+useHead(computed(() => ({
+  title: pageDocumentTitle.value,
+  meta: [
+    { property: 'og:title', content: pageDocumentTitle.value },
+  ],
+})));
 </script>
 
 <template>

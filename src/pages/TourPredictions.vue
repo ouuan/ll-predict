@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useHead } from '@unhead/vue';
 import { ArrowBackOutline, EyeOutline } from '@vicons/ionicons5';
 import { watchImmediate } from '@vueuse/core';
 import { useMessage } from 'naive-ui';
@@ -78,6 +79,26 @@ const contextTitle = computed(() => {
 
   return parts.join(' ');
 });
+const pageDocumentTitle = computed(() => {
+  const parts: string[] = [];
+
+  parts.push(t('app.pageTitle.predictionList'));
+
+  if (contextTitle.value) {
+    parts.push(contextTitle.value);
+  }
+
+  parts.push(t('app.name'));
+  return parts.join(' - ');
+});
+
+useHead(computed(() => ({
+  title: pageDocumentTitle.value,
+  meta: [
+    { property: 'og:title', content: pageDocumentTitle.value },
+  ],
+})));
+
 const sortOptions = computed(() => [
   { label: t('ui.sortOption.orderAccuracy'), value: 'order_accuracy' },
   { label: t('ui.sortOption.songAccuracy'), value: 'song_accuracy' },

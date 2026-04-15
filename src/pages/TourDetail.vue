@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useHead } from '@unhead/vue';
 import { ListOutline, OpenOutline } from '@vicons/ionicons5';
 import { useMessage } from 'naive-ui';
 import { computed, onMounted, ref } from 'vue';
@@ -20,6 +21,25 @@ const tour = ref<TourListItem | null>(null);
 const errorMessage = ref('');
 
 const tourId = computed(() => String(route.params.tourId ?? ''));
+const pageDocumentTitle = computed(() => {
+  const parts: string[] = [];
+
+  parts.push(t('app.pageTitle.tourDetail'));
+
+  if (tour.value?.name) {
+    parts.push(tour.value.name);
+  }
+
+  parts.push(t('app.name'));
+  return parts.join(' - ');
+});
+
+useHead(computed(() => ({
+  title: pageDocumentTitle.value,
+  meta: [
+    { property: 'og:title', content: pageDocumentTitle.value },
+  ],
+})));
 
 async function fetchTourDetail() {
   loading.value = true;
