@@ -31,6 +31,48 @@ const tour = ref<TourListItem | null>(null);
 
 const nominatedSongIds = computed(() => items.value.map((item) => item.songId));
 const initialSeriesIds = computed(() => tour.value?.seriesIds ?? []);
+const selectedConcertName = computed(() => {
+  if (!tour.value) {
+    return '';
+  }
+
+  for (const concert of tour.value.concerts) {
+    if (concert.performances.some((performance) => performance.id === performanceId.value)) {
+      return concert.name;
+    }
+  }
+
+  return '';
+});
+const selectedPerformanceName = computed(() => {
+  if (!tour.value) {
+    return '';
+  }
+
+  for (const concert of tour.value.concerts) {
+    const performance = concert.performances.find((item) => item.id === performanceId.value);
+    if (performance) {
+      return performance.name;
+    }
+  }
+
+  return '';
+});
+const contextTitle = computed(() => {
+  if (!tour.value) {
+    return '';
+  }
+
+  const parts = [tour.value.name];
+  if (selectedConcertName.value) {
+    parts.push(selectedConcertName.value);
+  }
+  if (selectedPerformanceName.value) {
+    parts.push(selectedPerformanceName.value);
+  }
+
+  return parts.join(' ');
+});
 
 function toVoteRatios(willSingCount: number, wontSingCount: number) {
   const total = willSingCount + wontSingCount;
@@ -150,15 +192,23 @@ onMounted(() => {
     />
 
     <n-card size="small">
-      <n-space align="center">
-        <router-link :to="`/tours/${tourId}`">
-          <n-button size="small">
-            <template #icon>
-              <n-icon><arrow-back-outline /></n-icon>
-            </template>
-            {{ t('ui.tourDetail') }}
-          </n-button>
-        </router-link>
+      <n-space
+        align="center"
+        justify="space-between"
+      >
+        <n-space align="center">
+          <router-link :to="`/tours/${tourId}`">
+            <n-button size="small">
+              <template #icon>
+                <n-icon><arrow-back-outline /></n-icon>
+              </template>
+              {{ t('ui.tourDetail') }}
+            </n-button>
+          </router-link>
+          <strong v-if="contextTitle">
+            {{ contextTitle }}
+          </strong>
+        </n-space>
 
         <n-button
           secondary
