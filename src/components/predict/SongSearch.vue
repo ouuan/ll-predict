@@ -24,6 +24,7 @@ const emit = defineEmits<{
   select: [song: SongItem];
 }>();
 const { t, locale } = useI18n();
+const show = defineModel<boolean>('show', { default: false });
 
 const query = ref('');
 const loading = ref(false);
@@ -182,156 +183,187 @@ defineExpose({
 </script>
 
 <template>
-  <n-space vertical>
-    <n-space
-      v-if="!props.hideTopSongsSwitch"
-      align="center"
-    >
-      <span>{{ t('ui.showTopSongs') }}</span>
-      <n-switch
-        v-model:value="showTopSongs"
-        :disabled="!props.performanceId"
+  <n-modal
+    v-model:show="show"
+    preset="card"
+    content-scrollable
+    :title="t('ui.songSearch')"
+    display-directive="show"
+    style="width: min(960px, calc(95vw - 25px));"
+  >
+    <div class="song-search">
+      <n-space
+        v-if="!props.hideTopSongsSwitch"
+        align="center"
+      >
+        <span>{{ t('ui.showTopSongs') }}</span>
+        <n-switch
+          v-model:value="showTopSongs"
+          :disabled="!props.performanceId"
+        />
+      </n-space>
+      <n-input
+        v-model:value="query"
+        :placeholder="t('ui.placeholders.songKeyword')"
       />
-    </n-space>
-    <n-input
-      v-model:value="query"
-      :placeholder="t('ui.placeholders.songKeyword')"
-    />
-    <n-select
-      v-model:value="seriesIds"
-      :options="seriesOptions"
-      :placeholder="t('ui.placeholders.selectSeries')"
-      multiple
-      clearable
-      filterable
-    />
-    <n-spin :show="showTopSongs ? topSongsLoading : loading">
-      <n-list
-        v-if="showTopSongs && topSongs.length > 0"
-        bordered
-      >
-        <n-list-item
-          v-for="song of topSongs"
-          :key="song.songId"
+      <n-select
+        v-model:value="seriesIds"
+        :options="seriesOptions"
+        :placeholder="t('ui.placeholders.selectSeries')"
+        multiple
+        clearable
+        filterable
+      />
+      <div class="song-search-list-section">
+        <n-spin
+          :show="showTopSongs ? topSongsLoading : loading"
+          class="song-search-list-spin"
         >
-          <n-space
-            size="small"
-            align="center"
-            justify="space-between"
-            style="width: 100%"
-          >
-            <n-space
-              size="small"
-              align="center"
+          <n-scrollbar style="max-height: calc(95vh - 300px);">
+            <n-list
+              v-if="showTopSongs && topSongs.length > 0"
+              bordered
             >
-              <n-button
-                size="small"
-                circle
-                :disabled="disabledSongIdSet.has(song.songId)"
-                :title="t('ui.add')"
-                @click="addTopSong(song)"
+              <n-list-item
+                v-for="song of topSongs"
+                :key="song.songId"
               >
-                <template #icon>
-                  <n-icon><add-outline /></n-icon>
-                </template>
-              </n-button>
-              <n-a
-                :href="`https://ll-fans.jp/data/song/${song.songId}`"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <strong>{{ song.songName }}</strong>
-              </n-a>
-            </n-space>
-            <n-space
-              size="small"
-              style="margin-top: 4px"
+                <n-space
+                  size="small"
+                  align="center"
+                  justify="space-between"
+                  style="width: 100%"
+                >
+                  <n-space
+                    size="small"
+                    align="center"
+                  >
+                    <n-button
+                      size="small"
+                      circle
+                      :disabled="disabledSongIdSet.has(song.songId)"
+                      :title="t('ui.add')"
+                      @click="addTopSong(song)"
+                    >
+                      <template #icon>
+                        <n-icon><add-outline /></n-icon>
+                      </template>
+                    </n-button>
+                    <n-a
+                      :href="`https://ll-fans.jp/data/song/${song.songId}`"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <strong>{{ song.songName }}</strong>
+                    </n-a>
+                  </n-space>
+                  <n-space
+                    size="small"
+                    style="margin-top: 4px"
+                  >
+                    <n-tag type="success">
+                      {{ t('ui.willSingCount', { count: song.willSingCount }) }}
+                    </n-tag>
+                    <n-tag type="error">
+                      {{ t('ui.wontSingCount', { count: song.wontSingCount }) }}
+                    </n-tag>
+                  </n-space>
+                </n-space>
+              </n-list-item>
+            </n-list>
+            <n-list
+              v-else-if="songs.length > 0"
+              bordered
             >
-              <n-tag type="success">
-                {{ t('ui.willSingCount', { count: song.willSingCount }) }}
-              </n-tag>
-              <n-tag type="error">
-                {{ t('ui.wontSingCount', { count: song.wontSingCount }) }}
-              </n-tag>
-            </n-space>
-          </n-space>
-        </n-list-item>
-      </n-list>
-      <n-list
-        v-else-if="songs.length > 0"
-        bordered
-      >
-        <n-list-item
-          v-for="song of songs"
-          :key="song.id"
-        >
-          <n-space
-            align="center"
-            justify="space-between"
-            style="width: 100%"
-          >
-            <n-space
-              align="center"
-              size="small"
-              style="flex: 1; min-width: 0"
-            >
-              <n-button
-                size="small"
-                circle
-                :disabled="disabledSongIdSet.has(song.id)"
-                :title="t('ui.add')"
-                @click="addSong(song)"
+              <n-list-item
+                v-for="song of songs"
+                :key="song.id"
               >
-                <template #icon>
-                  <n-icon><add-outline /></n-icon>
-                </template>
-              </n-button>
-              <n-a
-                :href="`https://ll-fans.jp/data/song/${song.id}`"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <strong>{{ song.name }}</strong>
-              </n-a>
-              <span
-                v-if="song.artistVariantIds.length > 0"
-                class="inline-muted"
-              >
-                {{ song.artistVariantIds.map(getDisplayName).join(' / ') }}
-              </span>
-            </n-space>
+                <n-space
+                  align="center"
+                  justify="space-between"
+                  style="width: 100%"
+                >
+                  <n-space
+                    align="center"
+                    size="small"
+                    style="flex: 1; min-width: 0"
+                  >
+                    <n-button
+                      size="small"
+                      circle
+                      :disabled="disabledSongIdSet.has(song.id)"
+                      :title="t('ui.add')"
+                      @click="addSong(song)"
+                    >
+                      <template #icon>
+                        <n-icon><add-outline /></n-icon>
+                      </template>
+                    </n-button>
+                    <n-a
+                      :href="`https://ll-fans.jp/data/song/${song.id}`"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <strong>{{ song.name }}</strong>
+                    </n-a>
+                    <span
+                      v-if="song.artistVariantIds.length > 0"
+                      class="inline-muted"
+                    >
+                      {{ song.artistVariantIds.map(getDisplayName).join(' / ') }}
+                    </span>
+                  </n-space>
 
-            <span
-              v-if="song.releasedOn"
-              class="inline-muted song-date"
-            >
-              {{ song.releasedOn }}
-            </span>
-          </n-space>
-        </n-list-item>
-      </n-list>
-      <n-empty
-        v-else
-        :description="showTopSongs ? t('ui.noTopSongsYet') : t('ui.noSongsFound')"
-      />
-    </n-spin>
-    <div
-      v-if="!showTopSongs"
-      class="pagination-wrap"
-    >
-      <n-pagination
-        v-model:page="page"
-        v-model:page-size="pageSize"
-        :item-count="total"
-        :page-slot="paginationPageSlot"
-        show-size-picker
-        :page-sizes="[10, 20, 50]"
-      />
+                  <span
+                    v-if="song.releasedOn"
+                    class="inline-muted song-date"
+                  >
+                    {{ song.releasedOn }}
+                  </span>
+                </n-space>
+              </n-list-item>
+            </n-list>
+            <n-empty
+              v-else
+              :description="showTopSongs ? t('ui.noTopSongsYet') : t('ui.noSongsFound')"
+            />
+          </n-scrollbar>
+        </n-spin>
+      </div>
+      <div
+        v-if="!showTopSongs"
+        class="pagination-wrap"
+      >
+        <n-pagination
+          v-model:page="page"
+          v-model:page-size="pageSize"
+          :item-count="total"
+          :page-slot="paginationPageSlot"
+          show-size-picker
+          :page-sizes="[10, 20, 50]"
+        />
+      </div>
     </div>
-  </n-space>
+  </n-modal>
 </template>
 
 <style scoped>
+.song-search {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.song-search-list-section {
+  flex: 1;
+  min-height: 0;
+}
+
+.song-search-list-spin {
+  height: 100%;
+}
+
 .pagination-wrap {
   display: flex;
   justify-content: center;

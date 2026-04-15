@@ -249,23 +249,14 @@ onMounted(() => {
       </n-space>
     </n-card>
 
-    <n-modal
+    <song-search
       v-model:show="showSongSearchDialog"
-      preset="card"
-      :title="t('ui.songSearch')"
-      display-directive="show"
-      style="width: min(960px, calc(95vw - 25px));"
-    >
-      <div class="song-search-dialog-body">
-        <song-search
-          :initial-series-ids="initialSeriesIds"
-          :performance-id="performanceId"
-          :hide-top-songs-switch="true"
-          :disabled-song-ids="nominatedSongIds"
-          @select="nominateSong"
-        />
-      </div>
-    </n-modal>
+      :initial-series-ids="initialSeriesIds"
+      :performance-id="performanceId"
+      :hide-top-songs-switch="true"
+      :disabled-song-ids="nominatedSongIds"
+      @select="nominateSong"
+    />
 
     <loading-spinner :show="loading">
       <n-list
@@ -328,11 +319,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.song-search-dialog-body {
-  max-height: calc(90vh - 150px);
-  overflow: auto;
-}
-
 @media (max-width: 640px) {
   .vote-button :deep(.n-button__icon) {
     display: none;

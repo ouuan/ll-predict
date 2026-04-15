@@ -185,21 +185,12 @@ defineExpose({
       <div class="inline-muted">
         {{ countText }}
       </div>
-      <n-modal
+      <song-search
         v-model:show="showSongSearchDialog"
-        preset="card"
-        :title="t('ui.songSearch')"
-        display-directive="show"
-        style="width: min(960px, calc(95vw - 25px));"
-      >
-        <div class="song-search-dialog-body">
-          <song-search
-            :initial-series-ids="props.initialSeriesIds"
-            :performance-id="props.performanceId"
-            @select="addSong"
-          />
-        </div>
-      </n-modal>
+        :initial-series-ids="props.initialSeriesIds"
+        :performance-id="props.performanceId"
+        @select="addSong"
+      />
       <div
         v-if="props.cloneHint"
         class="inline-muted"
@@ -467,11 +458,6 @@ defineExpose({
 
 .setlist-actions {
   flex: 0 0 auto;
-}
-
-.song-search-dialog-body {
-  max-height: calc(90vh - 150px);
-  overflow: auto;
 }
 
 @media (max-width: 1000px) {
