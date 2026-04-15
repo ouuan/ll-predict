@@ -124,17 +124,20 @@ export interface SearchSongsPayload extends QueryListPayload {
 }
 
 export interface NominateSongPayload {
+  tourId: string;
   songId: string;
   songName: string;
 }
 
 export interface VoteSingleSongPayload {
+  tourId: string;
   songId: string;
   songName?: string;
   vote: 'will_sing' | 'wont_sing';
 }
 
 export interface DeleteSingleSongVotePayload {
+  tourId: string;
   songId: string;
 }
 

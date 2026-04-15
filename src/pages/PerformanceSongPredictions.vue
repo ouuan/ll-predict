@@ -3,6 +3,7 @@ import { useHead } from '@unhead/vue';
 import {
   AddOutline,
   ArrowBackOutline,
+  CheckmarkOutline,
   ThumbsDownOutline,
   ThumbsUpOutline,
 } from '@vicons/ionicons5';
@@ -14,7 +15,12 @@ import ErrorAlert from '../components/common/ErrorAlert.vue';
 import LoadingSpinner from '../components/common/LoadingSpinner.vue';
 import SongSearch from '../components/predict/SongSearch.vue';
 import { api } from '../composables/useApi';
-import type { SingleSongPredictionItem, SongItem, TourListItem } from '../types/domain';
+import type {
+  PerformanceDetail,
+  SingleSongPredictionItem,
+  SongItem,
+  TourListItem,
+} from '../types/domain';
 
 const route = useRoute();
 const message = useMessage();
@@ -29,6 +35,7 @@ const items = ref<SingleSongPredictionItem[]>([]);
 const errorMessage = ref('');
 const showSongSearchDialog = ref(false);
 const tour = ref<TourListItem | null>(null);
+const performanceDetail = ref<PerformanceDetail | null>(null);
 
 const nominatedSongIds = computed(() => items.value.map((item) => item.songId));
 const initialSeriesIds = computed(() => tour.value?.seriesIds ?? []);
@@ -74,6 +81,19 @@ const contextTitle = computed(() => {
   }
 
   return parts.join(' ');
+});
+
+const submissionClosed = computed(() => {
+  if (!tour.value) {
+    return false;
+  }
+
+  const cutoff = Date.parse(`${tour.value.startsOn}T00:00:00+09:00`);
+  if (!Number.isFinite(cutoff)) {
+    return false;
+  }
+
+  return Date.now() >= cutoff;
 });
 
 const pageDocumentTitle = computed(() => {
@@ -137,12 +157,30 @@ function applyVoteLocally(songId: string, nextVote: 'will_sing' | 'wont_sing' | 
   });
 }
 
+function songWasSungInActualSetlist(songId: string): boolean {
+  if (!performanceDetail.value) {
+    return false;
+  }
+  return performanceDetail.value.setlists.some(
+    (item) => item.contentType === 'song' && item.song?.id === songId,
+  );
+}
+
 async function fetchTour() {
   try {
     const res = await api.getTourDetail(tourId.value);
     tour.value = res.data;
   } catch {
     tour.value = null;
+  }
+}
+
+async function fetchPerformanceDetail() {
+  try {
+    const res = await api.getPerformanceDetail(performanceId.value);
+    performanceDetail.value = res.data;
+  } catch {
+    performanceDetail.value = null;
   }
 }
 
@@ -162,9 +200,14 @@ async function fetchSingleSongPredictions() {
 }
 
 async function nominateSong(song: SongItem) {
+  if (submissionClosed.value) {
+    return;
+  }
+
   nominating.value = true;
   try {
     await api.nominateSong(performanceId.value, {
+      tourId: tourId.value,
       songId: song.id,
       songName: song.name,
     });
@@ -179,16 +222,22 @@ async function nominateSong(song: SongItem) {
 }
 
 async function voteSong(song: SingleSongPredictionItem, vote: 'will_sing' | 'wont_sing') {
+  if (submissionClosed.value) {
+    return;
+  }
+
   votingSongId.value = song.songId;
   try {
     const nextVote = song.myVote === vote ? null : vote;
 
     if (nextVote === null) {
       await api.deleteSingleSongVote(performanceId.value, {
+        tourId: tourId.value,
         songId: song.songId,
       });
     } else {
       await api.voteSingleSong(performanceId.value, {
+        tourId: tourId.value,
         songId: song.songId,
         songName: song.songName,
         vote: nextVote,
@@ -206,6 +255,7 @@ async function voteSong(song: SingleSongPredictionItem, vote: 'will_sing' | 'won
 onMounted(() => {
   void fetchTour();
   void fetchSingleSongPredictions();
+  void fetchPerformanceDetail();
 });
 </script>
 
@@ -235,17 +285,26 @@ onMounted(() => {
           </strong>
         </n-space>
 
-        <n-button
-          secondary
-          type="primary"
-          :loading="nominating"
-          @click="showSongSearchDialog = true"
-        >
-          <template #icon>
-            <n-icon><add-outline /></n-icon>
-          </template>
-          {{ t('ui.nominateSong') }}
-        </n-button>
+        <n-space align="center">
+          <n-tag
+            v-if="submissionClosed"
+            type="error"
+          >
+            {{ t('ui.submissionClosed') }}
+          </n-tag>
+          <n-button
+            v-else
+            secondary
+            type="primary"
+            :loading="nominating"
+            @click="showSongSearchDialog = true"
+          >
+            <template #icon>
+              <n-icon><add-outline /></n-icon>
+            </template>
+            {{ t('ui.nominateSong') }}
+          </n-button>
+        </n-space>
       </n-space>
     </n-card>
 
@@ -282,30 +341,78 @@ onMounted(() => {
             </n-a>
 
             <n-space size="small">
-              <n-button
-                class="vote-button"
-                :type="song.myVote === 'will_sing' ? 'primary' : 'default'"
-                :loading="votingSongId === song.songId"
-                size="small"
-                @click="voteSong(song, 'will_sing')"
-              >
-                <template #icon>
-                  <n-icon><thumbs-up-outline /></n-icon>
-                </template>
-                {{ t('ui.voteWillSing', { count: song.willSingCount, ratio: song.willSingRatio }) }}
-              </n-button>
-              <n-button
-                class="vote-button"
-                :type="song.myVote === 'wont_sing' ? 'error' : 'default'"
-                :loading="votingSongId === song.songId"
-                size="small"
-                @click="voteSong(song, 'wont_sing')"
-              >
-                <template #icon>
-                  <n-icon><thumbs-down-outline /></n-icon>
-                </template>
-                {{ t('ui.voteWontSing', { count: song.wontSingCount, ratio: song.wontSingRatio }) }}
-              </n-button>
+              <template v-if="submissionClosed">
+                <n-tag
+                  type="success"
+                  :strong="song.myVote === 'will_sing'"
+                  :bordered="song.myVote === 'will_sing'"
+                >
+                  <template #icon>
+                    <n-icon v-if="songWasSungInActualSetlist(song.songId)">
+                      <checkmark-outline />
+                    </n-icon>
+                  </template>
+                  {{
+                    t('ui.voteWillSing', {
+                      count: song.willSingCount,
+                      ratio: song.willSingRatio,
+                    })
+                  }}
+                </n-tag>
+                <n-tag
+                  type="error"
+                  :strong="song.myVote === 'wont_sing'"
+                  :bordered="song.myVote === 'wont_sing'"
+                >
+                  <template #icon>
+                    <n-icon v-if="!songWasSungInActualSetlist(song.songId)">
+                      <checkmark-outline />
+                    </n-icon>
+                  </template>
+                  {{
+                    t('ui.voteWontSing', {
+                      count: song.wontSingCount,
+                      ratio: song.wontSingRatio,
+                    })
+                  }}
+                </n-tag>
+              </template>
+              <template v-else>
+                <n-button
+                  class="vote-button"
+                  :type="song.myVote === 'will_sing' ? 'primary' : 'default'"
+                  :loading="votingSongId === song.songId"
+                  size="small"
+                  @click="voteSong(song, 'will_sing')"
+                >
+                  <template #icon>
+                    <n-icon><thumbs-up-outline /></n-icon>
+                  </template>
+                  {{
+                    t('ui.voteWillSing', {
+                      count: song.willSingCount,
+                      ratio: song.willSingRatio,
+                    })
+                  }}
+                </n-button>
+                <n-button
+                  class="vote-button"
+                  :type="song.myVote === 'wont_sing' ? 'error' : 'default'"
+                  :loading="votingSongId === song.songId"
+                  size="small"
+                  @click="voteSong(song, 'wont_sing')"
+                >
+                  <template #icon>
+                    <n-icon><thumbs-down-outline /></n-icon>
+                  </template>
+                  {{
+                    t('ui.voteWontSing', {
+                      count: song.wontSingCount,
+                      ratio: song.wontSingRatio,
+                    })
+                  }}
+                </n-button>
+              </template>
             </n-space>
           </n-space>
         </n-list-item>

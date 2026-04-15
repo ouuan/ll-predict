@@ -33,7 +33,10 @@ const predictionButtonText = computed(() => {
 
 const singleSongPredictionButtonText = computed(() => {
   const count = props.performance.songNominationsCount;
-  return `${t('ui.predictSingleSong')} (${count})`;
+  const label = submissionClosed.value
+    ? t('ui.singleSongPredictionList')
+    : t('ui.predictSingleSong');
+  return `${label} (${count})`;
 });
 
 const predictionButtonType = computed(() => {
@@ -91,7 +94,6 @@ onMounted(() => {
         </n-button>
       </router-link>
       <router-link
-        v-if="!submissionClosed"
         :to="`/tours/${tourId}/performances/${performance.id}/song-predictions`"
       >
         <n-button

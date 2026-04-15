@@ -118,11 +118,13 @@ const listPredictionsQuerySchema = z.object({
 });
 
 const nominateSongBodySchema = z.object({
+  tourId: nonEmptyStringSchema,
   songId: nonEmptyStringSchema,
   songName: nonEmptyStringSchema,
 });
 
 const voteSingleSongBodySchema = z.object({
+  tourId: nonEmptyStringSchema,
   songId: nonEmptyStringSchema,
   songName: z.string().trim().min(1)
     .optional(),
@@ -130,6 +132,7 @@ const voteSingleSongBodySchema = z.object({
 });
 
 const deleteSingleSongVoteBodySchema = z.object({
+  tourId: nonEmptyStringSchema,
   songId: nonEmptyStringSchema,
 });
 
@@ -1430,6 +1433,12 @@ function isTourSubmissionClosed(tour: Tour): boolean {
   return Date.now() >= cutoff;
 }
 
+function tourHasPerformance(tour: Tour, performanceId: string): boolean {
+  return tour.concerts.some((concert) => {
+    return concert.performances.some((performance) => performance.id === performanceId);
+  });
+}
+
 app.use('/api/*', async (c, next) => {
   getSessionId(c);
   await next();
@@ -2150,7 +2159,31 @@ app.post('/api/performances/:performanceId/song-predictions/nominate', async (c)
   }
 
   const { performanceId } = pathValidation.data;
-  const { songId, songName } = bodyValidation.data;
+  const { tourId, songId, songName } = bodyValidation.data;
+
+  let tour: Tour | null;
+  try {
+    tour = await getTourById(tourId);
+  } catch (error) {
+    const message = error instanceof Error
+      ? error.message
+      : 'Failed to validate tour from ll-fans.';
+    return jsonError('LLFANS_UNAVAILABLE', message, 502);
+  }
+  if (!tour) {
+    return jsonError('TOUR_NOT_FOUND', `Tour ${tourId} does not exist.`, 404);
+  }
+  if (!tourHasPerformance(tour, performanceId)) {
+    return jsonError(
+      'PERFORMANCE_NOT_IN_TOUR',
+      'Performance does not belong to the provided tour.',
+      400,
+    );
+  }
+  if (isTourSubmissionClosed(tour)) {
+    return jsonError('SUBMISSION_CLOSED', 'Prediction submission is closed for this tour.', 409);
+  }
+
   await upsertSongNomination(db, performanceId, songId, songName);
   await upsertSingleSongVote(db, performanceId, songId, 'will_sing', sessionId);
 
@@ -2176,7 +2209,33 @@ app.post('/api/performances/:performanceId/song-predictions/vote', async (c) => 
   }
 
   const { performanceId } = pathValidation.data;
-  const { songId, songName, vote } = bodyValidation.data;
+  const {
+    tourId, songId, songName, vote,
+  } = bodyValidation.data;
+
+  let tour: Tour | null;
+  try {
+    tour = await getTourById(tourId);
+  } catch (error) {
+    const message = error instanceof Error
+      ? error.message
+      : 'Failed to validate tour from ll-fans.';
+    return jsonError('LLFANS_UNAVAILABLE', message, 502);
+  }
+  if (!tour) {
+    return jsonError('TOUR_NOT_FOUND', `Tour ${tourId} does not exist.`, 404);
+  }
+  if (!tourHasPerformance(tour, performanceId)) {
+    return jsonError(
+      'PERFORMANCE_NOT_IN_TOUR',
+      'Performance does not belong to the provided tour.',
+      400,
+    );
+  }
+  if (isTourSubmissionClosed(tour)) {
+    return jsonError('SUBMISSION_CLOSED', 'Prediction submission is closed for this tour.', 409);
+  }
+
   const existingNomination = await db.prepare(
     `
       SELECT song_id
@@ -2216,7 +2275,30 @@ app.delete('/api/performances/:performanceId/song-predictions/vote', async (c) =
   }
 
   const { performanceId } = pathValidation.data;
-  const { songId } = bodyValidation.data;
+  const { tourId, songId } = bodyValidation.data;
+
+  let tour: Tour | null;
+  try {
+    tour = await getTourById(tourId);
+  } catch (error) {
+    const message = error instanceof Error
+      ? error.message
+      : 'Failed to validate tour from ll-fans.';
+    return jsonError('LLFANS_UNAVAILABLE', message, 502);
+  }
+  if (!tour) {
+    return jsonError('TOUR_NOT_FOUND', `Tour ${tourId} does not exist.`, 404);
+  }
+  if (!tourHasPerformance(tour, performanceId)) {
+    return jsonError(
+      'PERFORMANCE_NOT_IN_TOUR',
+      'Performance does not belong to the provided tour.',
+      400,
+    );
+  }
+  if (isTourSubmissionClosed(tour)) {
+    return jsonError('SUBMISSION_CLOSED', 'Prediction submission is closed for this tour.', 409);
+  }
 
   await db.prepare(
     `
