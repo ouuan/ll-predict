@@ -247,8 +247,10 @@ defineExpose({
               size="small"
               style="margin-top: 4px"
             >
-              <n-tag>{{ t('ui.willSingCount', { count: song.willSingCount }) }}</n-tag>
-              <n-tag type="info">
+              <n-tag type="success">
+                {{ t('ui.willSingCount', { count: song.willSingCount }) }}
+              </n-tag>
+              <n-tag type="error">
                 {{ t('ui.wontSingCount', { count: song.wontSingCount }) }}
               </n-tag>
             </n-space>
