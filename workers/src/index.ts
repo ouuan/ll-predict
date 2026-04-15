@@ -100,8 +100,6 @@ const createPredictionBodySchema = z.object({
 const listTourPredictionsQuerySchema = z.object({
   page: positiveIntegerSchema.optional(),
   pageSize: positiveIntegerSchema.optional(),
-  concertName: z.string().optional(),
-  performanceName: z.string().optional(),
   performanceId: z.string().optional(),
   sort: z.enum(['created_at', 'likes', 'song_accuracy', 'order_accuracy']).optional(),
   songId: z.string().optional(),
@@ -1881,36 +1879,13 @@ app.get('/api/tours/:tourId/predictions', async (c) => {
   const { tourId } = pathValidation.data;
   const page = queryValidation.data.page ?? 1;
   const pageSize = queryValidation.data.pageSize ?? 10;
-  const concertName = (queryValidation.data.concertName ?? '').trim();
-  const performanceName = (queryValidation.data.performanceName ?? '').trim();
   const performanceId = (queryValidation.data.performanceId ?? '').trim();
   const sort = queryValidation.data.sort ?? 'created_at';
   const songId = (queryValidation.data.songId ?? '').trim();
 
-  let tour: Tour | null = null;
-  try {
-    tour = await getTourById(tourId);
-  } catch {
-    tour = null;
-  }
-  const concertNameById = new Map((tour?.concerts ?? []).map(
-    (concert) => [concert.id, concert.name],
-  ));
-
   const conditions: string[] = ['p.tour_id = ?'];
   const whereValues: unknown[] = [tourId];
 
-  if (concertName) {
-    const concertId = [...concertNameById.entries()].find(([, name]) => name === concertName)?.[0];
-    if (concertId) {
-      conditions.push('p.concert_id = ?');
-      whereValues.push(concertId);
-    }
-  }
-  if (performanceName) {
-    conditions.push('p.performance_name = ?');
-    whereValues.push(performanceName);
-  }
   if (performanceId) {
     conditions.push('p.performance_id = ?');
     whereValues.push(performanceId);

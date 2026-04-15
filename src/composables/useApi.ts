@@ -189,8 +189,6 @@ export const api = {
     params: {
       page?: number;
       pageSize?: number;
-      concertName?: string;
-      performanceName?: string;
       performanceId?: string;
       sort?: 'likes' | 'created_at' | 'song_accuracy' | 'order_accuracy';
       songId?: string;
@@ -199,8 +197,6 @@ export const api = {
     const query = new URLSearchParams();
     if (params.page) query.set('page', String(params.page));
     if (params.pageSize) query.set('pageSize', String(params.pageSize));
-    if (params.concertName) query.set('concertName', params.concertName);
-    if (params.performanceName) query.set('performanceName', params.performanceName);
     if (params.performanceId) query.set('performanceId', params.performanceId);
     if (params.sort) query.set('sort', params.sort);
     if (params.songId) query.set('songId', params.songId);
