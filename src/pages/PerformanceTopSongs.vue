@@ -78,11 +78,14 @@ onMounted(() => {
                   <template #icon>
                     <n-icon><list-outline /></n-icon>
                   </template>
-                  {{ t('ui.predictionsCount', { count: item.count }) }}
+                  {{ t('ui.predictions') }}
                 </n-button>
               </router-link>
+              <n-tag>
+                {{ t('ui.willSingCount', { count: item.willSingCount }) }}
+              </n-tag>
               <n-tag type="info">
-                {{ item.ratio }}%
+                {{ t('ui.wontSingCount', { count: item.wontSingCount }) }}
               </n-tag>
             </n-space>
           </n-space>

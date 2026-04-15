@@ -28,10 +28,12 @@ const submissionClosed = computed(() => {
 
 const predictionButtonText = computed(() => {
   const count = props.performance.predictionsCount;
-  if (hasActualSetlist.value) {
-    return `${t('ui.viewResults')} (${count})`;
-  }
   return `${t('ui.predictions')} (${count})`;
+});
+
+const singleSongPredictionButtonText = computed(() => {
+  const count = props.performance.songNominationsCount;
+  return `${t('ui.predictSingleSong')} (${count})`;
 });
 
 const predictionButtonType = computed(() => {
@@ -89,6 +91,18 @@ onMounted(() => {
         </n-button>
       </router-link>
       <router-link
+        v-if="!submissionClosed"
+        :to="`/tours/${tourId}/performances/${performance.id}/song-predictions`"
+      >
+        <n-button
+          size="small"
+          secondary
+          type="primary"
+        >
+          {{ singleSongPredictionButtonText }}
+        </n-button>
+      </router-link>
+      <router-link
         :to="`/tours/${tourId}/performances/${performance.id}/predictions`"
       >
         <n-button
@@ -96,11 +110,6 @@ onMounted(() => {
           :type="predictionButtonType"
         >
           {{ predictionButtonText }}
-        </n-button>
-      </router-link>
-      <router-link :to="`/tours/${tourId}/performances/${performance.id}/top-songs`">
-        <n-button size="small">
-          {{ t('ui.topSongs') }}
         </n-button>
       </router-link>
       <n-button

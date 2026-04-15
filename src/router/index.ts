@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 
 const AllPredictionsPage = () => import('../pages/AllPredictions.vue');
 const NotFoundPage = () => import('../pages/NotFound.vue');
+const PerformanceSongPredictionsPage = () => import('../pages/PerformanceSongPredictions.vue');
 const PerformanceTopSongsPage = () => import('../pages/PerformanceTopSongs.vue');
 const PredictSubmitPage = () => import('../pages/PredictSubmit.vue');
 const PredictionDetailPage = () => import('../pages/PredictionDetail.vue');
@@ -33,6 +34,11 @@ export const router = createRouter({
       path: '/tours/:tourId/performances/:performanceId/top-songs',
       name: 'performance-top-songs',
       component: PerformanceTopSongsPage,
+    },
+    {
+      path: '/tours/:tourId/performances/:performanceId/song-predictions',
+      name: 'performance-song-predictions',
+      component: PerformanceSongPredictionsPage,
     },
     { path: '/predictions', name: 'all-predictions', component: AllPredictionsPage },
     { path: '/predictions/:id', name: 'prediction-detail', component: PredictionDetailPage },

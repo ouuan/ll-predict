@@ -9,10 +9,16 @@ import { useResponsivePagination } from '../../composables/useResponsivePaginati
 import type { SongItem, TopSongItem } from '../../types/domain';
 import { getSeriesOptions } from '../../utils/series';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   initialSeriesIds: string[];
   performanceId?: string;
-}>();
+  hideTopSongsSwitch?: boolean;
+  disabledSongIds?: string[];
+}>(), {
+  performanceId: undefined,
+  hideTopSongsSwitch: false,
+  disabledSongIds: () => [],
+});
 
 const emit = defineEmits<{
   select: [song: SongItem];
@@ -30,6 +36,7 @@ const { paginationPageSlot } = useResponsivePagination();
 const showTopSongs = ref(false);
 const topSongsLoading = ref(false);
 const topSongs = ref<TopSongItem[]>([]);
+const disabledSongIdSet = computed(() => new Set(props.disabledSongIds));
 
 const seriesOptions = computed(() => getSeriesOptions(locale.value));
 const { getDisplayName, refreshIfMissing } = useArtistVariants();
@@ -98,6 +105,10 @@ async function fetchTopSongs() {
 }
 
 function addTopSong(song: TopSongItem) {
+  if (disabledSongIdSet.value.has(song.songId)) {
+    return;
+  }
+
   const songItem: SongItem = {
     id: song.songId,
     name: song.songName,
@@ -109,6 +120,10 @@ function addTopSong(song: TopSongItem) {
 }
 
 function addSong(song: SongItem) {
+  if (disabledSongIdSet.value.has(song.id)) {
+    return;
+  }
+
   emit('select', song);
 }
 
@@ -119,6 +134,16 @@ watch(
       return;
     }
     void search();
+  },
+  { immediate: true },
+);
+
+watch(
+  () => props.hideTopSongsSwitch,
+  (hidden) => {
+    if (hidden && showTopSongs.value) {
+      showTopSongs.value = false;
+    }
   },
   { immediate: true },
 );
@@ -158,7 +183,10 @@ defineExpose({
 
 <template>
   <n-space vertical>
-    <n-space align="center">
+    <n-space
+      v-if="!props.hideTopSongsSwitch"
+      align="center"
+    >
       <span>{{ t('ui.showTopSongs') }}</span>
       <n-switch
         v-model:value="showTopSongs"
@@ -199,6 +227,7 @@ defineExpose({
               <n-button
                 size="small"
                 circle
+                :disabled="disabledSongIdSet.has(song.songId)"
                 :title="t('ui.add')"
                 @click="addTopSong(song)"
               >
@@ -218,9 +247,9 @@ defineExpose({
               size="small"
               style="margin-top: 4px"
             >
-              <n-tag>{{ t('ui.predictionsCount', { count: song.count }) }}</n-tag>
+              <n-tag>{{ t('ui.willSingCount', { count: song.willSingCount }) }}</n-tag>
               <n-tag type="info">
-                {{ song.ratio }}%
+                {{ t('ui.wontSingCount', { count: song.wontSingCount }) }}
               </n-tag>
             </n-space>
           </n-space>
@@ -247,6 +276,7 @@ defineExpose({
               <n-button
                 size="small"
                 circle
+                :disabled="disabledSongIdSet.has(song.id)"
                 :title="t('ui.add')"
                 @click="addSong(song)"
               >

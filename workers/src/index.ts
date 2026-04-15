@@ -117,6 +117,22 @@ const listPredictionsQuerySchema = z.object({
   hasSetlist: z.enum(['true', 'false']).optional(),
 });
 
+const nominateSongBodySchema = z.object({
+  songId: nonEmptyStringSchema,
+  songName: nonEmptyStringSchema,
+});
+
+const voteSingleSongBodySchema = z.object({
+  songId: nonEmptyStringSchema,
+  songName: z.string().trim().min(1)
+    .optional(),
+  vote: z.enum(['will_sing', 'wont_sing']),
+});
+
+const deleteSingleSongVoteBodySchema = z.object({
+  songId: nonEmptyStringSchema,
+});
+
 interface Venue {
   id: string;
   name: string;
@@ -126,6 +142,7 @@ interface PerformanceSummary {
   id: string;
   name: string;
   predictionsCount: number;
+  songNominationsCount: number;
 }
 
 interface Concert {
@@ -513,6 +530,7 @@ function mapTourDetailToTour(tourDetail: NonNullable<LlFansTourDetailResponse['t
       id: toStringId(performance.id),
       name: performance.name ?? '',
       predictionsCount: 0,
+      songNominationsCount: 0,
     })),
   }));
 
@@ -859,6 +877,24 @@ interface PredictionItemDbRow {
   note: string | null;
 }
 
+interface SingleSongPredictionDbRow {
+  song_id: string;
+  song_name: string;
+  will_sing_count: number | string;
+  wont_sing_count: number | string;
+  my_vote: 'will_sing' | 'wont_sing' | null;
+}
+
+interface SingleSongPredictionItem {
+  songId: string;
+  songName: string;
+  willSingCount: number;
+  wontSingCount: number;
+  willSingRatio: number;
+  wontSingRatio: number;
+  myVote: 'will_sing' | 'wont_sing' | null;
+}
+
 function getDatabase(c: Context<{ Bindings: AppBindings }>): D1LikeDatabase {
   return c.env.DB;
 }
@@ -1003,6 +1039,31 @@ async function countPredictionsByPerformanceIds(
   }
 }
 
+async function countSongNominationsByPerformanceIds(
+  db: D1LikeDatabase,
+  performanceIds: string[],
+): Promise<Record<string, number>> {
+  if (performanceIds.length === 0) {
+    return {};
+  }
+
+  try {
+    const placeholders = performanceIds.map(() => '?').join(',');
+    const rows = await db.prepare(
+      'SELECT performance_id, COUNT(*) AS count FROM song_nominations'
+      + ` WHERE performance_id IN (${placeholders}) GROUP BY performance_id`,
+    ).bind(...performanceIds).all<{ performance_id: string; count: number | string }>();
+
+    const result: Record<string, number> = {};
+    for (const row of rows.results) {
+      result[row.performance_id] = Number(row.count);
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
 async function listPredictionsFromDb(
   db: D1LikeDatabase,
   whereClause: string,
@@ -1041,6 +1102,100 @@ async function listPredictionsFromDb(
       const items = itemsMap.get(predictionId) ?? [];
       return rowToPrediction(row, items);
     });
+}
+
+async function upsertSongNomination(
+  db: D1LikeDatabase,
+  performanceId: string,
+  songId: string,
+  songName: string,
+) {
+  await db.prepare(
+    `
+      INSERT INTO song_nominations (
+        performance_id,
+        song_id,
+        song_name
+      ) VALUES (?, ?, ?)
+      ON CONFLICT(performance_id, song_id) DO UPDATE SET
+        song_name = excluded.song_name
+    `,
+  ).bind(
+    performanceId,
+    songId,
+    songName,
+  ).run();
+}
+
+async function upsertSingleSongVote(
+  db: D1LikeDatabase,
+  performanceId: string,
+  songId: string,
+  vote: 'will_sing' | 'wont_sing',
+  sessionId: string,
+) {
+  await db.prepare(
+    `
+      INSERT INTO song_prediction_votes (
+        performance_id,
+        song_id,
+        session_id,
+        vote
+      ) VALUES (?, ?, ?, ?)
+      ON CONFLICT(performance_id, song_id, session_id) DO UPDATE SET
+        vote = excluded.vote
+    `,
+  ).bind(
+    performanceId,
+    songId,
+    sessionId,
+    vote,
+  ).run();
+}
+
+function toSingleSongPredictionItem(row: SingleSongPredictionDbRow): SingleSongPredictionItem {
+  const willSingCount = Number(row.will_sing_count);
+  const wontSingCount = Number(row.wont_sing_count);
+  const totalVotes = willSingCount + wontSingCount;
+
+  return {
+    songId: row.song_id,
+    songName: row.song_name,
+    willSingCount,
+    wontSingCount,
+    willSingRatio: totalVotes === 0 ? 0 : Math.round((willSingCount / totalVotes) * 10000) / 100,
+    wontSingRatio: totalVotes === 0 ? 0 : Math.round((wontSingCount / totalVotes) * 10000) / 100,
+    myVote: row.my_vote,
+  };
+}
+
+async function listSingleSongPredictions(
+  db: D1LikeDatabase,
+  performanceId: string,
+  sessionId: string,
+): Promise<SingleSongPredictionItem[]> {
+  const rows = await db.prepare(
+    `
+      SELECT
+        n.song_id,
+        n.song_name,
+        COALESCE(SUM(CASE WHEN v.vote = 'will_sing' THEN 1 ELSE 0 END), 0) AS will_sing_count,
+        COALESCE(SUM(CASE WHEN v.vote = 'wont_sing' THEN 1 ELSE 0 END), 0) AS wont_sing_count,
+        MAX(CASE WHEN v.session_id = ? THEN v.vote ELSE NULL END) AS my_vote
+      FROM song_nominations n
+      LEFT JOIN song_prediction_votes v
+        ON v.performance_id = n.performance_id
+       AND v.song_id = n.song_id
+      WHERE n.performance_id = ?
+      GROUP BY n.song_id, n.song_name
+      ORDER BY
+        will_sing_count DESC,
+        wont_sing_count ASC,
+        n.song_id ASC
+    `,
+  ).bind(sessionId, performanceId).all<SingleSongPredictionDbRow>();
+
+  return rows.results.map((row) => toSingleSongPredictionItem(row));
 }
 
 function jsonError(code: string, message: string, status: number, details?: unknown) {
@@ -1303,9 +1458,14 @@ app.get('/api/ll-fans/tours/:id', async (c) => {
       db,
       performanceIds,
     );
+    const performanceSongNominationsCount = await countSongNominationsByPerformanceIds(
+      db,
+      performanceIds,
+    );
     for (const concert of tour.concerts) {
       for (const performance of concert.performances) {
         performance.predictionsCount = performancePredictionsCount[performance.id] ?? 0;
+        performance.songNominationsCount = performanceSongNominationsCount[performance.id] ?? 0;
       }
     }
 
@@ -1611,6 +1771,22 @@ app.post('/api/predictions', async (c) => {
         item.type === 'text' ? item.text : null,
         item.note ?? null,
       ).run();
+    }));
+
+    const uniqueSongs = new Map<string, string>();
+    body.items.forEach((item) => {
+      if (item.type !== 'song' || !item.songId || !item.songName) {
+        return;
+      }
+      uniqueSongs.set(item.songId, item.songName);
+    });
+
+    await Promise.all([...uniqueSongs.entries()].map(([songId, songName]) => {
+      return upsertSongNomination(db, body.performanceId, songId, songName);
+    }));
+
+    await Promise.all([...uniqueSongs.keys()].map((songId) => {
+      return upsertSingleSongVote(db, body.performanceId, songId, 'will_sing', sessionId);
     }));
 
     return c.json({ data: { id } }, 201);
@@ -1931,6 +2107,19 @@ app.get('/api/predictions/:id/likes', async (c) => {
 
 app.get('/api/performances/:performanceId/top-songs', async (c) => {
   const db = getDatabase(c);
+  const pathValidation = validateValue(performanceIdParamSchema, c.req.param());
+  if (!pathValidation.success) {
+    return pathValidation.response;
+  }
+
+  const { performanceId } = pathValidation.data;
+  const items = await listSingleSongPredictions(db, performanceId, getSessionId(c));
+
+  return c.json({ data: { items } });
+});
+
+app.get('/api/performances/:performanceId/song-predictions', async (c) => {
+  const db = getDatabase(c);
   const sessionId = getSessionId(c);
   const pathValidation = validateValue(performanceIdParamSchema, c.req.param());
   if (!pathValidation.success) {
@@ -1938,46 +2127,105 @@ app.get('/api/performances/:performanceId/top-songs', async (c) => {
   }
 
   const { performanceId } = pathValidation.data;
-  const relatedPredictions = await listPredictionsFromDb(
-    db,
-    'WHERE p.performance_id = ?',
-    [performanceId],
-    sessionId,
-  );
-
-  const counter = new Map<string, { songName: string; count: number }>();
-
-  relatedPredictions.forEach((prediction) => {
-    const uniqueSongsInPrediction = new Map<string, string>();
-
-    prediction.items.forEach((item) => {
-      if (item.type !== 'song' || !item.songId || !item.songName) return;
-      if (!uniqueSongsInPrediction.has(item.songId)) {
-        uniqueSongsInPrediction.set(item.songId, item.songName);
-      }
-    });
-
-    uniqueSongsInPrediction.forEach((songName, songId) => {
-      const found = counter.get(songId);
-      if (found) {
-        found.count += 1;
-      } else {
-        counter.set(songId, { songName, count: 1 });
-      }
-    });
-  });
-
-  const totalPredictions = Math.max(relatedPredictions.length, 1);
-  const items = [...counter.entries()]
-    .map(([songId, value]) => ({
-      songId,
-      songName: value.songName,
-      count: value.count,
-      ratio: Math.round((value.count / totalPredictions) * 10000) / 100,
-    }))
-    .sort((a, b) => b.count - a.count);
-
+  const items = await listSingleSongPredictions(db, performanceId, sessionId);
   return c.json({ data: { items } });
+});
+
+app.post('/api/performances/:performanceId/song-predictions/nominate', async (c) => {
+  const db = getDatabase(c);
+  const sessionId = getSessionId(c);
+  const pathValidation = validateValue(performanceIdParamSchema, c.req.param());
+  if (!pathValidation.success) {
+    return pathValidation.response;
+  }
+
+  const rawBody = await readJsonBody(c);
+  if (!rawBody.ok) {
+    return rawBody.response;
+  }
+
+  const bodyValidation = validateValue(nominateSongBodySchema, rawBody.data);
+  if (!bodyValidation.success) {
+    return bodyValidation.response;
+  }
+
+  const { performanceId } = pathValidation.data;
+  const { songId, songName } = bodyValidation.data;
+  await upsertSongNomination(db, performanceId, songId, songName);
+  await upsertSingleSongVote(db, performanceId, songId, 'will_sing', sessionId);
+
+  return c.json({ data: { ok: true } }, 201);
+});
+
+app.post('/api/performances/:performanceId/song-predictions/vote', async (c) => {
+  const db = getDatabase(c);
+  const sessionId = getSessionId(c);
+  const pathValidation = validateValue(performanceIdParamSchema, c.req.param());
+  if (!pathValidation.success) {
+    return pathValidation.response;
+  }
+
+  const rawBody = await readJsonBody(c);
+  if (!rawBody.ok) {
+    return rawBody.response;
+  }
+
+  const bodyValidation = validateValue(voteSingleSongBodySchema, rawBody.data);
+  if (!bodyValidation.success) {
+    return bodyValidation.response;
+  }
+
+  const { performanceId } = pathValidation.data;
+  const { songId, songName, vote } = bodyValidation.data;
+  const existingNomination = await db.prepare(
+    `
+      SELECT song_id
+      FROM song_nominations
+      WHERE performance_id = ? AND song_id = ?
+      LIMIT 1
+    `,
+  ).bind(performanceId, songId).first();
+
+  if (!existingNomination) {
+    if (!songName) {
+      return jsonError('INVALID_PARAMS', 'songName is required when nominating a new song.', 400);
+    }
+    await upsertSongNomination(db, performanceId, songId, songName);
+  }
+
+  await upsertSingleSongVote(db, performanceId, songId, vote, sessionId);
+  return c.json({ data: { ok: true } });
+});
+
+app.delete('/api/performances/:performanceId/song-predictions/vote', async (c) => {
+  const db = getDatabase(c);
+  const sessionId = getSessionId(c);
+  const pathValidation = validateValue(performanceIdParamSchema, c.req.param());
+  if (!pathValidation.success) {
+    return pathValidation.response;
+  }
+
+  const rawBody = await readJsonBody(c);
+  if (!rawBody.ok) {
+    return rawBody.response;
+  }
+
+  const bodyValidation = validateValue(deleteSingleSongVoteBodySchema, rawBody.data);
+  if (!bodyValidation.success) {
+    return bodyValidation.response;
+  }
+
+  const { performanceId } = pathValidation.data;
+  const { songId } = bodyValidation.data;
+
+  await db.prepare(
+    `
+      DELETE FROM song_prediction_votes
+      WHERE performance_id = ? AND song_id = ? AND session_id = ?
+    `,
+  ).bind(performanceId, songId, sessionId).run();
+
+  return c.json({ data: { ok: true } });
 });
 
 export default app;
