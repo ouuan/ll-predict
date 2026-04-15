@@ -100,7 +100,7 @@ async function fetchCloneTargetOptions() {
     const tourName = res.data.name.trim();
     const options = res.data.concerts.flatMap((concert) =>
       concert.performances.map((performance) => {
-        const concertName = concert.name.trim();
+        const concertName = (concert.name ?? '').trim();
         const performanceName = performance.name.trim();
         const label = [concertName, performanceName].filter(Boolean).join(' ') || tourName;
 

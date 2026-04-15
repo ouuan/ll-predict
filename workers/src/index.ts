@@ -144,7 +144,7 @@ interface PerformanceSummary {
 
 interface Concert {
   id: string;
-  name: string;
+  name: string | null;
   startsOn: string;
   endsOn: string;
   venue: Venue;
@@ -309,7 +309,7 @@ interface Prediction {
   tourId: string;
   concertId: string;
   performanceId: string;
-  performanceName: string;
+  performanceName: string | null;
   performanceTitle: string;
   nickname: string;
   description: string | null;
@@ -325,6 +325,11 @@ interface Prediction {
 interface NameCacheDbRow {
   id: string;
   name: string;
+}
+
+interface NullableNameCacheDbRow {
+  id: string;
+  name: string | null;
 }
 
 const tourCache = new Map<string, Tour>();
@@ -416,8 +421,8 @@ function parsePerformanceCacheRow(row: PerformanceCacheDbRow): CachedPerformance
 async function loadPerformanceNameCacheMap(
   db: D1LikeDatabase,
   performanceIds: string[],
-): Promise<Map<string, string>> {
-  const result = new Map<string, string>();
+): Promise<Map<string, string | null>> {
+  const result = new Map<string, string | null>();
   if (performanceIds.length === 0) {
     return result;
   }
@@ -429,7 +434,7 @@ async function loadPerformanceNameCacheMap(
       FROM performance_names
       WHERE performance_id IN (${placeholders})
     `,
-  ).bind(...performanceIds).all<NameCacheDbRow>();
+  ).bind(...performanceIds).all<NullableNameCacheDbRow>();
 
   for (const row of rows.results) {
     result.set(row.id, row.name);
@@ -466,7 +471,7 @@ async function loadSongNameCacheMap(
 async function upsertPerformanceName(
   db: D1LikeDatabase,
   performanceId: string,
-  name: string,
+  name: string | null,
 ) {
   await db.prepare(
     `
@@ -474,7 +479,7 @@ async function upsertPerformanceName(
       VALUES (?, ?)
       ON CONFLICT(performance_id) DO UPDATE SET
         name = excluded.name
-      WHERE performance_names.name <> excluded.name
+      WHERE performance_names.name IS NOT excluded.name
     `,
   ).bind(performanceId, name).run();
 }
@@ -529,9 +534,9 @@ async function upsertSongNamesFromSetlists(db: D1LikeDatabase, setlists: Setlist
 async function resolvePerformanceNameMap(
   db: D1LikeDatabase,
   performanceIds: string[],
-): Promise<Map<string, string>> {
+): Promise<Map<string, string | null>> {
   const uniqueIds = [...new Set(performanceIds)].filter(Boolean);
-  const result = new Map<string, string>();
+  const result = new Map<string, string | null>();
   if (uniqueIds.length === 0) {
     return result;
   }
@@ -540,12 +545,12 @@ async function resolvePerformanceNameMap(
   const idsToRefresh: string[] = [];
 
   for (const performanceId of uniqueIds) {
-    const cached = cacheMap.get(performanceId);
-    if (!cached) {
+    if (!cacheMap.has(performanceId)) {
       idsToRefresh.push(performanceId);
       continue;
     }
 
+    const cached = cacheMap.get(performanceId) ?? null;
     result.set(performanceId, cached);
   }
 
@@ -556,10 +561,6 @@ async function resolvePerformanceNameMap(
   await Promise.all(idsToRefresh.map(async (performanceId) => {
     try {
       const freshName = await fetchPerformanceNameFromLlFans(performanceId);
-      if (!freshName) {
-        return;
-      }
-
       result.set(performanceId, freshName);
       await upsertPerformanceName(db, performanceId, freshName);
     } catch {
@@ -736,7 +737,7 @@ function toStringArray(values: (string | number)[] | undefined): string[] {
 function mapTourDetailToTour(tourDetail: NonNullable<LlFansTourDetailResponse['tour']>): Tour {
   const concerts = (tourDetail.concerts ?? []).map((concert) => ({
     id: toStringId(concert.id),
-    name: concert.name ?? '',
+    name: concert.name ?? null,
     startsOn: concert.startsOn ?? '',
     endsOn: concert.endsOn ?? '',
     venue: {
@@ -1157,7 +1158,7 @@ function getDatabase(c: Context<{ Bindings: AppBindings }>): D1LikeDatabase {
 function rowToPrediction(
   row: PredictionDbRow,
   items: PredictionDraftItem[],
-  performanceName: string,
+  performanceName: string | null,
 ): Prediction {
   return {
     id: Number(row.id),
@@ -1378,7 +1379,9 @@ async function listPredictionsFromDb(
         };
       });
 
-      const performanceName = performanceNameMap.get(row.performance_id) ?? 'Unknown';
+      const performanceName = performanceNameMap.has(row.performance_id)
+        ? (performanceNameMap.get(row.performance_id) ?? null)
+        : 'Unknown';
       return rowToPrediction(row, items, performanceName);
     });
 }
@@ -1574,13 +1577,21 @@ function paginate<T>(items: T[], page: number, pageSize: number) {
 function buildPerformanceTitle(
   tourId: string,
   concertId: string,
-  performanceName: string,
+  performanceName: string | null,
 ): string {
   const tour = tourCache.get(tourId);
   const concert = tour?.concerts.find((item) => item.id === concertId);
   const tourName = tour?.name ?? 'Unknown Tour';
-  const concertName = concert?.name ?? 'Unknown Concert';
-  return `${tourName} ${concertName} ${performanceName}`;
+  const parts = [tourName];
+  if (!concert) {
+    parts.push('Unknown Concert');
+  } else if (concert.name !== null) {
+    parts.push(concert.name);
+  }
+  if (performanceName !== null) {
+    parts.push(performanceName);
+  }
+  return parts.join(' ');
 }
 
 function toPredictionResponse(prediction: Prediction, sessionId: string) {

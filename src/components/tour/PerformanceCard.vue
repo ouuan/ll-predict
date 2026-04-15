@@ -9,7 +9,7 @@ import type { PerformanceSummary } from '../../types/domain';
 const props = defineProps<{
   tourId: string;
   tourStartsOn: string;
-  concertName: string;
+  concertName: string | null;
   performance: PerformanceSummary;
 }>();
 

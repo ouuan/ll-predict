@@ -12,7 +12,7 @@ export interface PerformanceSummary {
 
 export interface Concert {
   id: string;
-  name: string;
+  name: string | null;
   startsOn: string;
   endsOn: string;
   venue: Venue;
@@ -80,7 +80,7 @@ export interface Prediction {
   tourId: string;
   concertId: string;
   performanceId: string;
-  performanceName: string;
+  performanceName: string | null;
   performanceTitle: string;
   nickname: string;
   description: string | null;

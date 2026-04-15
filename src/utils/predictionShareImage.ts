@@ -134,7 +134,7 @@ export async function generatePredictionShareImage(
 
   const contentWidth = IMAGE_WIDTH - PADDING * 2;
   const performanceText = normalizeDisplayTitle(
-    prediction.performanceTitle || prediction.performanceName,
+    prediction.performanceTitle || prediction.performanceName || '',
   );
   const songTexts = prediction.items
     .filter((item) => item.type === 'song')
