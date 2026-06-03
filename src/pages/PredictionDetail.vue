@@ -239,7 +239,7 @@ onMounted(async () => {
                 {{ formatPredictionTime(prediction.createdAt, locale as 'en' | 'zh' | 'ja') }}
               </div>
             </template>
-            <div>{{ prediction.description || t('ui.noDescription') }}</div>
+            <div style="white-space: pre-wrap">{{ prediction.description || t('ui.noDescription') }}</div>
           </n-thing>
 
           <n-space>
