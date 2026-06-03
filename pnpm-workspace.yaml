@@ -1,4 +1,16 @@
+# Single-package repo. `packages` is declared so pnpm versions that treat a
+# pnpm-workspace.yaml as a workspace manifest don't fail with
+# "packages field missing or empty" (seen on the Cloudflare build's pnpm).
+packages:
+  - .
+# Build-script approval. pnpm 11+ reads `allowBuilds`; pnpm 10 reads
+# `onlyBuiltDependencies`. Both are kept so installs run these scripts
+# regardless of which pnpm version the environment provides.
 allowBuilds:
   esbuild: true
   sharp: true
   workerd: true
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - workerd
