@@ -53,7 +53,6 @@ const pageTitle = computed(() => {
   if (route.name === 'tour-predictions-by-performance') return t('app.pageTitle.predictionList');
   if (route.name === 'prediction-detail') return t('app.pageTitle.predictionDetail');
   if (route.name === 'performance-top-songs') return t('app.pageTitle.topSongs');
-  if (route.name === 'performance-song-predictions') return t('app.pageTitle.songPredictions');
   if (route.name === 'all-predictions') return t('app.pageTitle.myPredictions');
   return t('app.pageTitle.default');
 });

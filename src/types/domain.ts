@@ -7,7 +7,6 @@ export interface PerformanceSummary {
   id: string;
   name: string;
   predictionsCount: number;
-  songNominationsCount: number;
 }
 
 export interface Concert {
@@ -98,18 +97,6 @@ export interface Prediction {
 export interface TopSongItem {
   songId: string;
   songName: string;
-  willSingCount: number;
-  wontSingCount: number;
-  willSingRatio: number;
-  wontSingRatio: number;
-}
-
-export interface SingleSongPredictionItem {
-  songId: string;
-  songName: string;
-  willSingCount: number;
-  wontSingCount: number;
-  willSingRatio: number;
-  wontSingRatio: number;
-  myVote: 'will_sing' | 'wont_sing' | null;
+  count: number;
+  ratio: number;
 }

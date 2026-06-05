@@ -5,7 +5,6 @@ import type {
   PerformanceDetail,
   Prediction,
   PredictionDraftItem,
-  SingleSongPredictionItem,
   SongItem,
   TopSongItem,
   TourListItem,
@@ -121,22 +120,6 @@ export interface QueryListPayload {
 export interface SearchSongsPayload extends QueryListPayload {
   search: string;
   seriesIds: string[];
-}
-
-export interface NominateSongPayload {
-  tourId: string;
-  songId: string;
-}
-
-export interface VoteSingleSongPayload {
-  tourId: string;
-  songId: string;
-  vote: 'will_sing' | 'wont_sing';
-}
-
-export interface DeleteSingleSongVotePayload {
-  tourId: string;
-  songId: string;
 }
 
 export const api = {
@@ -257,41 +240,5 @@ export const api = {
 
   async getTopSongs(performanceId: string): Promise<ApiEnvelope<{ items: TopSongItem[] }>> {
     return request(`/performances/${performanceId}/top-songs`);
-  },
-
-  async getSingleSongPredictions(
-    performanceId: string,
-  ): Promise<ApiEnvelope<{ items: SingleSongPredictionItem[] }>> {
-    return request(`/performances/${performanceId}/song-predictions`);
-  },
-
-  async nominateSong(
-    performanceId: string,
-    payload: NominateSongPayload,
-  ): Promise<ApiEnvelope<{ ok: true }>> {
-    return request(`/performances/${performanceId}/song-predictions/nominate`, {
-      method: 'POST',
-      body: payload,
-    });
-  },
-
-  async voteSingleSong(
-    performanceId: string,
-    payload: VoteSingleSongPayload,
-  ): Promise<ApiEnvelope<{ ok: true }>> {
-    return request(`/performances/${performanceId}/song-predictions/vote`, {
-      method: 'POST',
-      body: payload,
-    });
-  },
-
-  async deleteSingleSongVote(
-    performanceId: string,
-    payload: DeleteSingleSongVotePayload,
-  ): Promise<ApiEnvelope<{ ok: true }>> {
-    return request(`/performances/${performanceId}/song-predictions/vote`, {
-      method: 'DELETE',
-      body: payload,
-    });
   },
 };
