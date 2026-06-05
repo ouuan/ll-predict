@@ -37,6 +37,11 @@ const shareImageDataUrl = ref('');
 const shareImageFilename = ref('');
 const errorMessage = ref('');
 const hasActualSetlist = computed(() => (performanceDetail.value?.setlists.length ?? 0) > 0);
+const songNumbers = computed(() => {
+  let songNumber = 0;
+  return (prediction.value?.items ?? []).map((item) =>
+    item.type === 'song' ? ++songNumber : null);
+});
 const predictionContextName = computed(() =>
   prediction.value?.performanceTitle
   || prediction.value?.performanceName
@@ -320,6 +325,9 @@ onMounted(async () => {
                 :key="`${item.type}-${index}`"
               >
                 <div class="prediction-item-main">
+                  <span class="prediction-item-number">
+                    {{ songNumbers[index] ?? '' }}
+                  </span>
                   <span
                     class="prediction-item-icon"
                     :title="
@@ -347,7 +355,7 @@ onMounted(async () => {
                 </div>
                 <div
                   v-if="item.note"
-                  class="inline-muted"
+                  class="inline-muted prediction-item-note"
                 >
                   {{ t('common.note') }}: {{ item.note }}
                 </div>
@@ -416,8 +424,34 @@ onMounted(async () => {
   gap: 8px;
 }
 
+.prediction-item-number {
+  flex: 0 0 auto;
+  min-width: 1.5em;
+  text-align: right;
+  color: var(--n-text-color-3, #999);
+  font-variant-numeric: tabular-nums;
+}
+
 .prediction-item-icon {
   flex: 0 0 auto;
+  min-width: 1.5em;
+  text-align: center;
+}
+
+.prediction-item-note {
+  /* number (1.5em) + gap (8px) + icon (1.5em) + gap (8px) */
+  padding-left: calc(3em + 16px);
+}
+
+@media (max-width: 600px) {
+  .prediction-item-number {
+    display: none;
+  }
+
+  .prediction-item-note {
+    /* icon (1.5em) + gap (8px) */
+    padding-left: calc(1.5em + 8px);
+  }
 }
 
 .share-preview-image {
