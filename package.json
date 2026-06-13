@@ -27,7 +27,7 @@
     "qrcode": "1.5.4",
     "vue": "3.5.35",
     "vue-i18n": "11.4.5",
-    "vue-router": "5.0.7",
+    "vue-router": "5.1.0",
     "zod": "4.4.3",
     "zod-validation-error": "5.0.0"
   },
