@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@unhead/vue':
-        specifier: 2.1.17
-        version: 2.1.17(vue@3.5.41(typescript@5.9.3))
+        specifier: 2.1.19
+        version: 2.1.19(vue@3.5.41(typescript@5.9.3))
       '@vicons/ionicons5':
         specifier: 0.13.0
         version: 0.13.0
@@ -863,8 +863,8 @@ packages:
     resolution: {integrity: sha512-NAGrjn0Pitjqzq/GkgMC4kBYm233PQ8GffyQ9+kTA3AlNQYEzOf25EIM02BAHZv5FRJSpHpJk+OGUxVkOB93GQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@unhead/vue@2.1.17':
-    resolution: {integrity: sha512-pnC8x9HLV3qQXdvWfylUEU25uhfCAy3ly9nmpQz84j9py818DRfU8jOsQ5wjdWtxyU1vX/fW2udfm4jtxUK8Bg==}
+  '@unhead/vue@2.1.19':
+    resolution: {integrity: sha512-bZTi9l4aAYJE6L7QJwdJOM2pjbYYu1QsLDhAmPCShCDeULroT26BQkQJlSPtrX5H/Hs3ypnQyjQNEEjv3QaUKA==}
     peerDependencies:
       vue: '>=3.5.18'
 
@@ -1229,6 +1229,10 @@ packages:
 
   emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
+
+  entities@6.0.1:
+    resolution: {integrity: sha512-aN97NXWF6AWBTahfVOIrB/NShkzi5H7F9r1s9mD3cDj4Ko5f2qhhVoYMibXF7GlLveb/D2ioWay8lxI97Ven3g==}
+    engines: {node: '>=0.12'}
 
   entities@7.0.1:
     resolution: {integrity: sha512-TWrgLOFUQTH994YUyl1yT4uyavY5nNB5muff+RtWaqNVCAK408b5ZnnbNAUEWLTCpum9w6arT70i1XdQ4UeOPA==}
@@ -1992,6 +1996,9 @@ packages:
     resolution: {integrity: sha512-GQ2EWRpQV8/o+Aw8YqtfZZPfNRWZYkbidE9k5rpl/hC3vtHHBfGm2Ifi6qWV+coDGkrUKZAxE3Lot5kcsRlh+g==}
     engines: {node: '>=6'}
 
+  parse5@7.3.0:
+    resolution: {integrity: sha512-IInvU7fabl34qmi9gY8XOVxhYyMyuH2xUNpb2q8/Y+7552KlejkRvqvD19nMoUW/uQGGbqNpA6Tufu5FL5BZgw==}
+
   path-browserify@1.0.1:
     resolution: {integrity: sha512-b7uo2UCUOYZcnF/3ID0lulOJi/bafxa1xPe7ZPsammBSpjSWQkjNxlt635YGS2MiR9GjvuXCtz2emr3jbsz98g==}
 
@@ -2328,8 +2335,8 @@ packages:
   unenv@2.0.0-rc.24:
     resolution: {integrity: sha512-i7qRCmY42zmCwnYlh9H2SvLEypEFGye5iRmEMKjcGi7zk9UquigRjFtTLz0TYqr0ZGLZhaMHl/foy1bZR+Cwlw==}
 
-  unhead@2.1.17:
-    resolution: {integrity: sha512-HLMKXOszRhAPBrr6VlqCeVeJq2kbC4kXwzGLEZvvojPLWNYTJw22xG7Bfwhsvs31+IBet3Wl8ADg9dwYdyphfQ==}
+  unhead@2.1.19:
+    resolution: {integrity: sha512-W+zxYQeulbi738I839IQFxOgdAzkNWLrNdaK0XmRGAqcDhojlFufESM7d/IeaMwPmue1rff27Sdl6NNckZqrrQ==}
 
   unplugin-utils@0.3.2:
     resolution: {integrity: sha512-xVToRh2CTmLk2HnEG7ac4rl1MJTT3RFkpS8B++/SnB0kXvuaavD+n3m/vrzyWQOdJNSZQACnbz01pnppbwV5BA==}
@@ -3247,10 +3254,10 @@ snapshots:
       '@typescript-eslint/types': 8.72.2
       eslint-visitor-keys: 5.0.1
 
-  '@unhead/vue@2.1.17(vue@3.5.41(typescript@5.9.3))':
+  '@unhead/vue@2.1.19(vue@3.5.41(typescript@5.9.3))':
     dependencies:
       hookable: 6.1.2
-      unhead: 2.1.17
+      unhead: 2.1.19
       vue: 3.5.41(typescript@5.9.3)
 
   '@vicons/ionicons5@0.13.0': {}
@@ -3677,6 +3684,8 @@ snapshots:
       gopd: 1.2.0
 
   emoji-regex@8.0.0: {}
+
+  entities@6.0.1: {}
 
   entities@7.0.1: {}
 
@@ -4560,6 +4569,10 @@ snapshots:
     dependencies:
       callsites: 3.1.0
 
+  parse5@7.3.0:
+    dependencies:
+      entities: 6.0.1
+
   path-browserify@1.0.1: {}
 
   path-exists@4.0.0: {}
@@ -4977,9 +4990,10 @@ snapshots:
     dependencies:
       pathe: 2.0.3
 
-  unhead@2.1.17:
+  unhead@2.1.19:
     dependencies:
       hookable: 6.1.2
+      parse5: 7.3.0
 
   unplugin-utils@0.3.2:
     dependencies:
